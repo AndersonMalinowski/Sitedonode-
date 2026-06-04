@@ -1,50 +1,94 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="estilo.css">
-    <title>SupleFit Store - Suplementos para Academia</title>
+    <title>Academia Iron & Suplementos</title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <nav>
-        <a href="index.html">Home</a>
-        <a href="produtos.html">Produtos</a>
-        <a href="carrinho.html">Carrinho</a>
-        <a href="clientes.html">Cadastro</a>
-    </nav>
-
-    <header class="banner">
-        <h1>SupleFit Store</h1>
-        <p>Suplementação de alta qualidade para seus resultados</p>
+    <header>
+        <h1>🏋️‍♂️ Iron Fitness & Suplementos</h1>
+        <nav>
+            <a href="/">Home / Painel</a> | 
+            <a href="/cadastro">Novo Cliente</a> | 
+            <a href="/agendamento">Agendar Compra</a>
+        </nav>
     </header>
 
-    <div class="container">
-        <h2>🏋️ Melhores Produtos</h2>
-        <div id="destaques" class="produtos-grid"></div>
-    </div>
+    <main>
+        <h2>Loja de Suplementos e Equipamentos</h2>
+        <div class="container">
+            <% produtos.forEach(produto => { %>
+                <div class="card">
+                    <h3><%= produto.nome %></h3>
+                    <p class="categoria"><%= produto.tipo %></p>
+                    <p class="preco">R$ <%= produto.preco.toFixed(2) %></p>
+                </div>
+            <% }) %>
+        </div>
 
-    <script>
-        fetch('/produtos')
-            .then(r => r.json())
-            .then(produtos => {
-                const container = document.getElementById('destaques');
-                produtos.slice(0, 4).forEach(p => {
-                    container.innerHTML += `
-                        <div class="card">
-                            <h3>${p.nome}</h3>
-                            <p>R$ ${p.preco.toFixed(2)}</p>
-                            <button onclick="adicionarAoCarrinho(${p.id}, '${p.nome}', ${p.preco})">Adicionar ao Carrinho</button>
-                        </div>`;
-                });
-            });
+        <h2>Serviços Disponíveis na Academia</h2>
+        <div class="container">
+            <% servicos.forEach(servico => { %>
+                <div class="card servico-card">
+                    <h3><%= servico.nome %></h3>
+                    <p class="preco"><%= servico.preco %></p>
+                </div>
+            <% }) %>
+        </div>
 
-        function adicionarAoCarrinho(id, nome, preco) {
-            let carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
-            carrinho.push({id, nome, preco, qtd: 1});
-            localStorage.setItem('carrinho', JSON.stringify(carrinho));
-            alert(`${nome} adicionado ao carrinho!`);
-        }
-    </script>
+        <hr style="border: 1px solid #333; margin: 40px 0;">
+
+        <div class="dashboard-section">
+            <h2>👥 Clientes Registrados (<%= clientes.length %>)</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% clientes.forEach(cliente => { %>
+                            <tr>
+                                <td><%= cliente.nome %></td>
+                                <td><%= cliente.email %></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="dashboard-section">
+            <h2>🛒 Agendamentos de Compra / Retirada</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cliente (E-mail)</th>
+                            <th>Produto / Equipamento</th>
+                            <th>Qtd.</th>
+                            <th>Total</th>
+                            <th>Data de Retirada</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% agendamentos.forEach(agendamento => { %>
+                            <tr>
+                                <td><%= agendamento.clienteEmail %></td>
+                                <td><%= agendamento.produto %></td>
+                                <td><strong><%= agendamento.quantidade %>x</strong></td>
+                                <td class="verde">R$ <%= agendamento.total %></td>
+                                <td><%= agendamento.dataRetirada %></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
 </body>
 </html>
