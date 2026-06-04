@@ -3,86 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Academia Iron & Suplementos</title>
+    <title>Node Gym - Sistema Integrado</title>
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
     <header>
-        <h1>🏋️‍♂️ Iron Fitness & Suplementos</h1>
-        <nav>
-            <a href="/">Home / Painel</a> | 
-            <a href="/cadastro">Novo Cliente</a> | 
-            <a href="/agendamento">Agendar Compra</a>
-        </nav>
+        <h1>🏋️‍♂️ NODE GYM & SUPLEMENTOS</h1>
+        <p>Gerenciamento de Vendas, Clientes, Equipamentos e Agendamentos</p>
     </header>
 
+    <div class="alert-container">
+        <% if (sucesso) { %> <div class="alert sucesso"><%= sucesso %></div> <% } %>
+        <% if (erro) { %> <div class="alert erro"><%= erro %></div> <% } %>
+    </div>
+
     <main>
-        <h2>Loja de Suplementos e Equipamentos</h2>
-        <div class="container">
-            <% produtos.forEach(produto => { %>
+        <h2>🛒 Vitrine da Loja (Suplementos & Equipamentos de Uso)</h2>
+        <div class="container-cards">
+            <% produtos.forEach(item => { %>
                 <div class="card">
-                    <h3><%= produto.nome %></h3>
-                    <p class="categoria"><%= produto.tipo %></p>
-                    <p class="preco">R$ <%= produto.preco.toFixed(2) %></p>
+                    <span class="tag <%= item.tipo === 'Suplemento' ? 'tag-suple' : 'tag-equip' %>"><%= item.tipo %></span>
+                    <h3><%= item.nome %></h3>
+                    <p class="preco">R$ <%= item.preco.toFixed(2) %></p>
                 </div>
             <% }) %>
         </div>
 
-        <h2>Serviços Disponíveis na Academia</h2>
-        <div class="container">
+        <h2>📋 Serviços Disponíveis</h2>
+        <div class="container-cards">
             <% servicos.forEach(servico => { %>
                 <div class="card servico-card">
                     <h3><%= servico.nome %></h3>
-                    <p class="preco"><%= servico.preco %></p>
+                    <p class="preco-servico"><%= servico.preco %></p>
                 </div>
             <% }) %>
         </div>
 
-        <hr style="border: 1px solid #333; margin: 40px 0;">
+        <div class="grid-formularios">
+            <div class="form-box">
+                <h3>👥 Registrar Novo Cliente</h3>
+                <form action="/cadastro" method="POST">
+                    <label>Nome do Atleta:</label>
+                    <input type="text" name="nome" placeholder="Ex: João Silva" required>
+                    <label>E-mail Corporativo:</label>
+                    <input type="email" name="email" placeholder="Ex: joao@gmail.com" required>
+                    <button type="submit">Adicionar Cliente</button>
+                </form>
+            </div>
 
-        <div class="dashboard-section">
-            <h2>👥 Clientes Registrados (<%= clientes.length %>)</h2>
-            <div class="table-container">
+            <div class="form-box">
+                <h3>📅 Agendar Quantidade de Compra</h3>
+                <form action="/agendamento" method="POST">
+                    <label>E-mail do Cliente Cadastrado:</label>
+                    <input type="email" name="clienteEmail" placeholder="Ex: carlos@email.com" required>
+                    
+                    <label>Produto / Equipamento:</label>
+                    <select name="produtoId" required>
+                        <% produtos.forEach(item => { %>
+                            <option value="<%= item.id %>"><%= item.nome %> (R$ <%= item.preco.toFixed(2) %>)</option>
+                        <% }) %>
+                    </select>
+
+                    <label>Quantidade Desejada:</label>
+                    <input type="number" name="quantidade" min="1" value="1" required>
+
+                    <label>Data para Retirada:</label>
+                    <input type="date" name="dataRetirada" required>
+
+                    <button type="submit" class="btn-agendar">Confirmar Agendamento</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="coluna-dados">
+                <h3>👥 Clientes Registrados No Sistema</h3>
                 <table>
                     <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>E-mail</th>
-                        </tr>
+                        <tr><th>Nome</th><th>E-mail</th></tr>
                     </thead>
                     <tbody>
-                        <% clientes.forEach(cliente => { %>
-                            <tr>
-                                <td><%= cliente.nome %></td>
-                                <td><%= cliente.email %></td>
-                            </tr>
+                        <% clientes.forEach(c => { %>
+                            <tr><td><%= c.nome %></td><td><%= c.email %></td></tr>
                         <% }) %>
                     </tbody>
                 </table>
             </div>
-        </div>
 
-        <div class="dashboard-section">
-            <h2>🛒 Agendamentos de Compra / Retirada</h2>
-            <div class="table-container">
+            <div class="coluna-dados">
+                <h3>📋 Quantidades e Agendamentos de Compras</h3>
                 <table>
                     <thead>
-                        <tr>
-                            <th>Cliente (E-mail)</th>
-                            <th>Produto / Equipamento</th>
-                            <th>Qtd.</th>
-                            <th>Total</th>
-                            <th>Data de Retirada</th>
-                        </tr>
+                        <tr><th>Cliente</th><th>Item</th><th>Qtd.</th><th>Total</th><th>Retirada</th></tr>
                     </thead>
                     <tbody>
-                        <% agendamentos.forEach(agendamento => { %>
+                        <% agendamentos.forEach(a => { %>
                             <tr>
-                                <td><%= agendamento.clienteEmail %></td>
-                                <td><%= agendamento.produto %></td>
-                                <td><strong><%= agendamento.quantidade %>x</strong></td>
-                                <td class="verde">R$ <%= agendamento.total %></td>
-                                <td><%= agendamento.dataRetirada %></td>
+                                <td><%= a.clienteEmail %></td>
+                                <td><%= a.produto %></td>
+                                <td><strong><%= a.quantidade %>x</strong></td>
+                                <td class="total-verde">R$ <%= a.total %></td>
+                                <td><%= a.dataRetirada %></td>
                             </tr>
                         <% }) %>
                     </tbody>
