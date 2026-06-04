@@ -1,96 +1,172 @@
 const express = require('express');
+const sqlite3 = require('sqlite3').verbose();
 const bodyParser = require('body-parser');
-const session = require('express-session');
 const app = express();
-const PORT = 3000;
 
-// Configurações do ecossistema Node.js / Express
-app.set('view engine', 'ejs');
-app.use(express.static('public'));
+// Configurações do Servidor
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use(express.json()); // Necessário para processar o JSON estruturado dos agendamentos
+app.use(express.static('.')); // Serve as páginas HTML, CSS e imagens do projeto
 
-// Configuração de Sessão (Essencial para manter o carrinho ativo na memória)
-app.use(session({
-    secret: 'suplementfit_secret_key',
-    resave: false,
-    saveUninitialized: true
-}));
+// Conexão com o Novo Banco de Dados do Projeto
+const db = new sqlite3.Database('./siscristovao.db');
 
-// --- GERADOR AUTOMÁTICO DE 100 PRODUTOS (SuplementFit) ---
-const marcas = ["Max Titanium", "Growth Supplements", "IntegralMedica", "Probiótica", "Optimum Nutrition"];
-const tipos = [
-    { nome: "Whey Protein Concentrado 1kg", preco: 149.90, cat: "Proteínas", img: "https://images.unsplash.com/photo-1579758629938-03607ccdbaba?q=80&w=400&auto=format&fit=crop" },
-    { nome: "Creatina Monohidratada 300g", preco: 89.90, cat: "Aminoácidos", img: "https://images.unsplash.com/photo-1593095948071-474c5cc2989d?q=80&w=400&auto=format&fit=crop" },
-    { nome: "Pré-Treino Pro Explosive 300g", preco: 115.00, cat: "Energéticos", img: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=400&auto=format&fit=crop" },
-    { nome: "BCAA Amino Ultra 200 cápsulas", preco: 59.95, cat: "Aminoácidos", img: "https://images.unsplash.com/photo-1584017911766-d451b3d0e843?q=80&w=400&auto=format&fit=crop" },
-    { nome: "Hipercalórico Mass Gainer 3kg", preco: 98.00, cat: "Ganho de Massa", img: "https://images.unsplash.com/photo-1546554137-f86b9593a222?q=80&w=400&auto=format&fit=crop" }
-];
+// Inicialização das Tabelas (Cria a estrutura caso não exista)
+db.serialize(() => {
+    // 1. Tabela de Clientes (Solicitantes dos Serviços)
+    db.run(`CREATE TABLE IF NOT EXISTS clientes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        nome TEXT NOT NULL, 
+        cpf TEXT NOT NULL, 
+        telefone TEXT NOT NULL
+    )`);
 
-const produtos = [];
-let idContador = 1;
+    // 2. Tabela de Serviços (Catálogo de Assistência do Laboratório)
+    db.run(`CREATE TABLE IF NOT EXISTS servicos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        descricao TEXT NOT NULL, 
+        preco REAL NOT NULL, 
+        tempo_estimado INTEGER NOT NULL
+    )`);
 
-// Loop multiplicador para gerar exatamente 100 produtos reais e variados
-for (let i = 1; i <= 20; i++) {
-    tipos.forEach(tipo => {
-        const marcaAleatoria = marcas[Math.floor(Math.random() * marcas.length)];
-        // Pequena variação matemática de preço baseada no lote para ficar realista
-        const variacaoPreco = (tipo.preco + (Math.sin(idContador) * 12)).toFixed(2);
-        
-        produtos.push({
-            id: idContador++,
-            nome: `${tipo.nome} (Lote Ref #0${i})`,
-            marca: marcaAleatoria,
-            preco: parseFloat(variacaoPreco),
-            categoria: tipo.cat,
-            imagem: tipo.img
+    // 3. Tabela Mestre: Agendamentos (Guarda a Ordem de Serviço geral)
+    db.run(`CREATE TABLE IF NOT EXISTS agendamentos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        cliente_id INTEGER NOT NULL, 
+        data TEXT NOT NULL, 
+        responsavel TEXT NOT NULL,
+        total REAL NOT NULL,
+        tempo_total INTEGER NOT NULL,
+        FOREIGN KEY (cliente_id) REFERENCES clientes (id)
+    )`);
+
+    // 4. Tabela Detalhe: Itens do Agendamento (Relaciona os serviços aplicados a cada O.S.)
+    db.run(`CREATE TABLE IF NOT EXISTS itens_agendamento (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, 
+        agendamento_id INTEGER NOT NULL, 
+        servico_id INTEGER NOT NULL, 
+        preco_cobrado REAL NOT NULL,
+        FOREIGN KEY (agendamento_id) REFERENCES agendamentos (id),
+        FOREIGN KEY (servico_id) REFERENCES servicos (id)
+    )`);
+});
+
+/* ==========================================================================
+   ROTAS DO MÓDULO: CLIENTES
+   ========================================================================== */
+
+// Salvar um novo cliente
+app.post('/salvar-cliente', (req, res) => {
+    const { nome, cpf, telefone } = req.body;
+    const sql = `INSERT INTO clientes (nome, cpf, telefone) VALUES (?, ?, ?)`;
+    
+    db.run(sql, [nome, cpf, telefone], (err) => {
+        if (err) return res.status(500).send("Erro ao salvar cliente: " + err.message);
+        // Redireciona de volta para a página de listagem/cadastro
+        res.redirect('/clientes.html');
+    });
+});
+
+// Listar todos os clientes (API JSON)
+app.get('/listar-clientes', (req, res) => {
+    const sql = `SELECT * FROM clientes ORDER BY nome ASC`;
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+/* ==========================================================================
+   ROTAS DO MÓDULO: SERVIÇOS
+   ========================================================================== */
+
+// Salvar um novo serviço no catálogo
+app.post('/salvar-servico', (req, res) => {
+    const { descricao, preco, tempo_estimado } = req.body;
+    const sql = `INSERT INTO servicos (descricao, preco, tempo_estimado) VALUES (?, ?, ?)`;
+    
+    db.run(sql, [descricao, parseFloat(preco), parseInt(tempo_estimado)], (err) => {
+        if (err) return res.status(500).send("Erro ao salvar serviço: " + err.message);
+        res.redirect('/servicos.html');
+    });
+});
+
+// Listar todos os serviços (API JSON)
+app.get('/listar-servicos', (req, res) => {
+    const sql = `SELECT * FROM servicos ORDER BY descricao ASC`;
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+/* ==========================================================================
+   ROTAS DO MÓDULO: AGENDAMENTOS (TRANSAÇÃO MESTRE-DETALHE)
+   ========================================================================== */
+
+// Gravar Agendamento Completo (Mestre e Detalhes encapsulados)
+app.post('/finalizar-agendamento', (req, res) => {
+    const { cliente_id, data, responsavel, total, tempo_total, servicos } = req.body;
+
+    // 1. Insere o registro na tabela Mestre (agendamentos)
+    const sqlMestre = `INSERT INTO agendamentos (cliente_id, data, responsavel, total, tempo_total) VALUES (?, ?, ?, ?, ?)`;
+    
+    db.run(sqlMestre, [cliente_id, data, responsavel, total, tempo_total], function(err) {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+
+        // Recupera o ID gerado automaticamente para este agendamento
+        const agendamentoId = this.lastID;
+
+        // 2. Prepara a inserção dos múltiplos serviços vinculados a este agendamento (Detalhe)
+        const sqlDetalhe = `INSERT INTO itens_agendamento (agendamento_id, servico_id, preco_cobrado) VALUES (?, ?, ?)`;
+        const stmt = db.prepare(sqlDetalhe);
+
+        // Percorre o array de serviços que veio do front-end e executa o statement
+        servicos.forEach(item => {
+            stmt.run(agendamentoId, item.id, item.preco);
+        });
+
+        // Finaliza o statement para liberar o banco de dados
+        stmt.finalize((errFinalize) => {
+            if (errFinalize) return res.status(500).json({ success: false, error: errFinalize.message });
+            res.json({ success: true });
         });
     });
-}
-// ---------------------------------------------------------
+});
 
-// Rota Principal (Exibe a Vitrine do SuplementFit e o Carrinho de Compras)
-app.get('/', (req, res) => {
-    if (!req.session.carrinho) req.session.carrinho = [];
-    
-    res.render('index', { 
-        produtos: produtos, 
-        carrinho: req.session.carrinho 
+// Listar todos os Agendamentos salvos (Mestre) com INNER JOIN para pegar o nome do cliente
+app.get('/listar-agendamentos', (req, res) => {
+    const sql = `
+        SELECT a.id, a.data, a.responsavel, a.total, a.tempo_total, c.nome as nome_cliente 
+        FROM agendamentos a 
+        INNER JOIN clientes c ON a.cliente_id = c.id 
+        ORDER BY a.id DESC`;
+        
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
     });
 });
 
-// Rota POST: Adiciona o item selecionado ao carrinho de compras
-app.post('/carrinho/adicionar', (req, res) => {
-    const produtoId = parseInt(req.body.produtoId);
-    if (!req.session.carrinho) req.session.carrinho = [];
-
-    const produtoEncontrado = produtos.find(p => p.id === produtoId);
-
-    if (produtoEncontrado) {
-        // Se o produto já está no carrinho, apenas soma a quantidade
-        const itemNoCarrinho = req.session.carrinho.find(item => item.id === produtoId);
-        if (itemNoCarrinho) {
-            itemNoCarrinho.quantidade += 1;
-        } else {
-            req.session.carrinho.push({
-                id: produtoEncontrado.id,
-                nome: produtoEncontrado.nome,
-                marca: produtoEncontrado.marca,
-                preco: produtoEncontrado.preco,
-                quantidade: 1
-            });
-        }
-    }
-    res.redirect('/');
+// Listar serviços específicos de um agendamento (Detalhe)
+app.get('/detalhes-agendamento/:id', (req, res) => {
+    const { id } = req.params;
+    const sql = `
+        SELECT i.preco_cobrado, s.descricao, s.tempo_estimado 
+        FROM itens_agendamento i 
+        INNER JOIN servicos s ON i.servico_id = s.id 
+        WHERE i.agendamento_id = ?`;
+        
+    db.all(sql, [id], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
 });
 
-// Rota POST: Limpa todos os itens do carrinho de compras
-app.post('/carrinho/limpar', (req, res) => {
-    req.session.carrinho = [];
-    res.redirect('/');
-});
-
-// Inicialização estável do servidor
-app.listen(PORT, () => {
-    console.log(`🚀 SuplementFit online e rodando em http://localhost:${PORT}`);
+// Inicialização do Servidor na Porta 3000
+app.listen(3000, () => {
+    console.log('====================================================');
+    console.log('🚀 SisCristóvão Rodando com Sucesso na Porta 3000!');
+    console.log('📂 Banco de Dados: siscristovao.db');
+    console.log('====================================================');
 });
