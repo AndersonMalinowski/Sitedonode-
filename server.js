@@ -3,86 +3,109 @@ const bodyParser = require('body-parser');
 const app = express();
 const PORT = 3000;
 
+// Configurações nativas do ecossistema Node.js / Express
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 
-// BANCO DE DADOS EM MEMÓRIA
+// 👥 Banco de dados temporário de Clientes Registrados
 const clientes = [
-    { nome: "Lucas Silva", email: "lucas@email.com" } // Exemplo inicial
+    { nome: "Carlos Henrique", email: "carlos@email.com" },
+    { nome: "Mariana Costa", email: "mari@email.com" }
 ];
 
+// 🛒 Banco de dados temporário de Agendamentos de Compras (com quantidade)
 const agendamentos = [
-    { clienteEmail: "lucas@email.com", produto: "Whey Protein 1kg", quantidade: 2, total: "299.80", dataRetirada: "2026-06-15" } // Exemplo inicial
+    { clienteEmail: "carlos@email.com", produto: "Whey Protein Concentrado 1kg", quantidade: 2, total: "299.80", dataRetirada: "15/06/2026" }
 ];
 
+// 💊 Loja de Suplementos e 🏋️‍♂️ Equipamentos de uso da Academia
 const produtos = [
-    { id: 1, nome: "Whey Protein 1kg", preco: 149.90, tipo: "Suplemento" },
-    { id: 2, nome: "Creatina 300g", preco: 89.90, tipo: "Suplemento" },
-    { id: 3, nome: "Halter Emborrachado 10kg", preco: 120.00, tipo: "Equipamento" },
-    { id: 4, nome: "Banco Supino Regulável", preco: 599.00, tipo: "Equipamento" }
+    { id: 1, nome: "Whey Protein Concentrado 1kg", preco: 149.90, tipo: "Suplemento" },
+    { id: 2, nome: "Creatina Monohidratada 300g", preco: 89.90, tipo: "Suplemento" },
+    { id: 3, nome: "BCAA Powder 200g", preco: 65.00, tipo: "Suplemento" },
+    { id: 4, nome: "Halter Emborrachado Profissional 12kg", preco: 135.00, tipo: "Equipamento de Uso" },
+    { id: 5, nome: "Banco Regulável Reto/Inclinado", preco: 640.00, tipo: "Equipamento de Uso" },
+    { id: 6, nome: "Corda de Pular de Alta Velocidade", preco: 45.00, tipo: "Equipamento de Uso" }
 ];
 
+// 📋 Serviços Disponíveis na Academia
 const servicos = [
-    { nome: "Musculação Livre", preco: "R$ 99,90/mês" },
-    { nome: "Consultoria Online com Personal", preco: "R$ 150,00/mês" },
-    { nome: "Avaliação Física Bioimpedância", preco: "R$ 50,00/sessão" }
+    { nome: "Plano Mensal Livre (Musculação)", preco: "R$ 99,90/mês" },
+    { nome: "Consultoria Personalizada com Personal Trainer", preco: "R$ 160,00/mês" },
+    { nome: "Avaliação por Bioimpedância Computadorizada", preco: "R$ 60,00/sessão" },
+    { nome: "Aulas de Crossfit e Funcional em Grupo", preco: "R$ 120,00/mês" }
 ];
 
-// ROTA PRINCIPAL (Home com Produtos, Serviços, Clientes e Agendamentos)
+// 🟢 ROTA PRINCIPAL: Renderiza o site completo com todas as seções unificadas
 app.get('/', (req, res) => {
-    res.render('index', { produtos, servicos, clientes, agendamentos });
+    res.render('index', { 
+        produtos, 
+        servicos, 
+        clientes, 
+        agendamentos,
+        sucesso: null,
+        erro: null
+    });
 });
 
-// ROTA DE CADASTRO (Exibir Página)
-app.get('/cadastro', (req, res) => {
-    res.render('cadastro', { mensagem: null });
-});
-
-// ROTA DE CADASTRO (Salvar Cliente)
+// 🔵 ROTA DE POST: Cadastro de Novos Clientes
 app.post('/cadastro', (req, res) => {
-    const { nome, email, senha } = req.body;
+    const { nome, email } = req.body;
     
-    // Verifica se o e-mail já existe
-    const existe = clientes.find(c => c.email === email);
-    if (existe) {
-        return res.render('cadastro', { mensagem: "Erro: Este e-mail já está cadastrado!" });
+    if (!nome || !email) {
+        return res.render('index', { produtos, servicos, clientes, agendamentos, sucesso: null, erro: "Preencha todos os campos do cadastro!" });
     }
 
-    clientes.push({ nome, email, senha });
-    res.render('cadastro', { mensagem: "Cliente cadastrado com sucesso!" });
+    const emailExiste = clientes.find(c => c.email.toLowerCase() === email.toLowerCase());
+    if (emailExiste) {
+        return res.render('index', { produtos, servicos, clientes, agendamentos, sucesso: null, erro: "Este e-mail de cliente já está registrado!" });
+    }
+
+    clientes.push({ nome, email: email.toLowerCase() });
+    res.render('index', { produtos, servicos, clientes, agendamentos, sucesso: "Cliente registrado com sucesso!", erro: null });
 });
 
-// ROTA DE AGENDAMENTO (Exibir Página)
-app.get('/agendamento', (req, res) => {
-    res.render('agendamento', { produtos, clientes, mensagem: null });
-});
-
-// ROTA DE AGENDAMENTO (Salvar Agendamento de Compra)
+// 🟠 ROTA DE POST: Agendamento de Quantidade de Compra
 app.post('/agendamento', (req, res) => {
     const { clienteEmail, produtoId, quantidade, dataRetirada } = req.body;
     
-    // Valida se o cliente existe no sistema
-    const clienteExiste = clientes.find(c => c.email === clienteEmail);
-    if (!clienteExiste) {
-        return res.render('agendamento', { produtos, clientes, mensagem: "Erro: Cliente não encontrado. Cadastre-se primeiro!" });
+    // Validar se o cliente está cadastrado no sistema do Node
+    const clienteEncontrado = clientes.find(c => c.email.toLowerCase() === clienteEmail.toLowerCase());
+    if (!clienteEncontrado) {
+        return res.render('index', { produtos, servicos, clientes, agendamentos, sucesso: null, erro: "E-mail não encontrado! Registre o cliente no formulário ao lado antes de agendar." });
     }
 
-    const produto = produtos.find(p => p.id == produtoId);
-    const qtd = parseInt(quantidade);
-    const valorTotal = (produto.preco * qtd).toFixed(2);
-    
+    // Validar produto selecionado
+    const produtoEncontrado = produtos.find(p => Number(p.id) === Number(produtoId));
+    if (!produtoEncontrado) {
+        return res.render('index', { produtos, servicos, clientes, agendamentos,... { sucesso: null, erro: "Produto inválido!" } });
+    }
+
+    const qtd = parseInt(quantidade) || 1;
+    const totalCalculado = (produtoEncontrado.preco * qtd).toFixed(2);
+
+    // Formatar data vinda do HTML para formato brasileiro (DD/MM/AAAA)
+    let dataFormatada = dataRetirada;
+    if (dataRetirada) {
+        const partes = dataRetirada.split('-');
+        if (partes.length === 3) dataFormatada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+
+    // Salvar o agendamento no array do Node
     agendamentos.push({
-        clienteEmail,
-        produto: produto.nome,
+        clienteEmail: clienteEmail.toLowerCase(),
+        produto: produtoEncontrado.nome,
         quantidade: qtd,
-        total: valorTotal,
-        dataRetirada
+        total: totalCalculado,
+        dataRetirada: dataFormatada
     });
 
-    res.render('agendamento', { produtos, clientes, mensagem: "Agendamento de compra realizado com sucesso!" });
+    res.render('index', { produtos, servicos, clientes, agendamentos, sucesso: `Agendamento de ${qtd}x ${produtoEncontrado.nome} salvo com sucesso!`, erro: null });
 });
 
+// Inicia o servidor Node.js
 app.listen(PORT, () => {
-    console.log(`Servidor rodando em http://localhost:${PORT}`);
+    console.log(`🚀 Site rodando perfeitamente em http://localhost:${PORT}`);
 });
