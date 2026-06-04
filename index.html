@@ -1,74 +1,80 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="estilo.css">
-    <title>SisCristóvão - Home</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuplementFit | Loja Online de Suplementação</title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <nav>
-        <a href="index.html">Home</a>
-        <a href="clientes.html">Clientes</a>
-        <a href="servicos.html">Serviços</a>
-        <a href="agendamentos.html">Agendamentos</a>
-        <a href="consulta_agendamentos.html">Consulta Agendamentos</a>
-    </nav>
-
-    <header class="banner">
-        <h1>SisCristóvão</h1>
-        <p>Controle de Serviços e Agendamentos Práticos</p>
-        <img src="imagens/banner.jtif" alt="SisCristóvão 1.0" width="300">
+    <header>
+        <div class="header-content">
+            <h1>⚡ SUPLEMENTFIT</h1>
+            <p>Sua central de performance - 100 Produtos originais de fábrica em estoque</p>
+        </div>
     </header>
 
-    <div class="container">
-        <div class="card">
-            <h1>Bem-vindo ao SisCristóvão 1.0</h1>
-            <p>Uma plataforma didática desenvolvida para gerenciar a prestação de serviços, organizar a alocação de equipes e otimizar o fluxo de agendamentos dos alunos do São Cristóvão.</p>
+    <div class="layout-principal">
+        <main class="vitrine-container">
+            <h2>🔥 Catálogo Completo (<%= produtos.length %> Itens)</h2>
+            <div class="grid-produtos">
+                <% produtos.forEach(produto => { %>
+                    <div class="card-produto">
+                        <div class="img-wrapper">
+                            <img src="<%= produto.imagem %>" alt="<%= produto.nome %>">
+                        </div>
+                        <span class="marca-badge"><%= produto.marca %></span>
+                        <h3><%= produto.nome %></h3>
+                        <p class="categoria-texto">Categoria: <%= produto.categoria %></p>
+                        <p class="preco-tag">R$ <%= produto.preco.toFixed(2) %></p>
+                        
+                        <form action="/carrinho/adicionar" method="POST">
+                            <input type="hidden" name="produtoId" value="<%= produto.id %>">
+                            <button type="submit" class="btn-comprar">Adicionar ao Carrinho</button>
+                        </form>
+                    </div>
+                <% }) %>
+            </div>
+        </main>
+
+        <aside class="carrinho-lateral">
+            <div class="carrinho-header">
+                <h2>🛒 Meu Carrinho</h2>
+            </div>
             
-            <p>Este sistema conecta a interface Web ao banco de dados SQLite para simular um ambiente real de ordens de serviço e atendimento ao cliente.</p>
-        </div>
+            <% if (carrinho.length === 0) { %>
+                <div class="carrinho-vazio">
+                    <p>Nenhum suplemento adicionado ainda.</p>
+                </div>
+            <% } else { %>
+                <div class="itens-lista">
+                    <% let totalGeral = 0; %>
+                    <% carrinho.forEach(item => { %>
+                        <% totalGeral += (item.preco * item.quantidade); %>
+                        <div class="item-linha">
+                            <div class="item-info">
+                                <h4><%= item.nome %></h4>
+                                <small><%= item.marca %></small>
+                            </div>
+                            <div class="item-valores">
+                                <span><%= item.quantidade %>x</span>
+                                <strong>R$ <%= (item.preco * item.quantidade).toFixed(2) %></strong>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
 
-        <div class="card" style="margin-top: 20px;">
-            <h3>🚀 Módulos Práticos do Sistema:</h3>
-            <table border="1" style="width:100%; border-collapse: collapse; margin-top: 10px;">
-                <thead>
-                    <tr style="background-color: #eee;">
-                        <th>Módulo</th>
-                        <th>Descrição Operacional</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>👥 <strong>Clientes</strong></td>
-                        <td>Cadastro de solicitantes e gerenciamento de contatos para assistência técnica.</td>
-                    </tr>
-                    <tr>
-                        <td>🛠️ <strong>Serviços</strong></td>
-                        <td>Catálogo de serviços disponíveis, incluindo escopo, prazos estimados e valores.</td>
-                    </tr>
-                    <tr>
-                        <td>📅 <strong>Agendamentos</strong></td>
-                        <td>Abertura de ordens de serviço, reserva de horários e alocação de alunos responsáveis.</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="card" style="margin-top: 20px;">
-            <h3>📊 Estrutura Tecnológica</h3>
-            <ul>
-                <li><strong>Ambiente Escolar:</strong> Práticas de laboratório na Unidade São Cristóvão.</li>
-                <li><strong>Backend:</strong> Node.js com Express e API RESTful.</li>
-                <li><strong>Banco de Dados:</strong> SQLite (`siscristovao.db`) com relacionamentos mestre-detalhe.</li>
-            </ul>
-        </div>
+                <div class="carrinho-rodape">
+                    <div class="total-linha">
+                        <span>Valor Total:</span>
+                        <span class="total-preco">R$ <%= totalGeral.toFixed(2) %></span>
+                    </div>
+                    <form action="/carrinho/limpar" method="POST">
+                        <button type="submit" class="btn-limpar">Limpar Tudo</button>
+                    </form>
+                </div>
+            <% } %>
+        </aside>
     </div>
-
-    <footer class="rodape">
-        <div class="container-rodape">
-            <p>&copy; 2026 SisCristóvão - Sistema de Controle de Serviços</p>
-            <p>Desenvolvido para fins didáticos - Alunos do São Cristóvão</p>
-        </div>
-    </footer>
 </body>
 </html>
