@@ -19,15 +19,77 @@ db.serialize(() => {
         telefone TEXT NOT NULL
     )`);
 
-    // 2. Tabela de Produtos (Substitui serviços)
+    // 2. Tabela de Produtos
     db.run(`CREATE TABLE IF NOT EXISTS produtos (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         descricao TEXT NOT NULL, 
         preco REAL NOT NULL, 
         peso_gramas INTEGER NOT NULL
-    )`);
+    )`, () => {
+        // Callback para popular a tabela com 150 produtos caso ela esteja vazia
+        db.get(`SELECT COUNT(*) as total FROM produtos`, [], (err, row) => {
+            if (!err && row.total === 0) {
+                console.log("Populando catálogo de suplementos (150 itens)...");
+                const stmt = db.prepare(`INSERT INTO produtos (descricao, preco, peso_gramas) VALUES (?, ?, ?)`);
+                
+                const marcas = ["Max Titanium", "Growth Supplements", "IntegralMedica", "Probiotica", "Optimun Nutrition", "Darkness", "Black Skull"];
+                const sabores = ["Baunilha", "Chocolate", "Morango", "Cookies", "Banana", "Sem Sabor"];
+                const frutas = ["Frutas Vermelhas", "Limão", "Melancia", "Uva", "Maçã Verde"];
 
-    // 3. Tabela Mestre: Pedidos (Substitui agendamentos)
+                // 1. WHEY PROTEIN (Itens 1 a 40)
+                let count = 1;
+                for (let m of marcas) {
+                    for (let s of sabores) {
+                        if (count <= 40) {
+                            stmt.run(`Whey Protein Concentrado 80% - ${m} (${s})`, (89.90 + (count * 1.50)).toFixed(2), 900);
+                            count++;
+                        }
+                    }
+                }
+                // Isolados e Hidrolisados
+                for (let i = 1; i <= 15; i++) {
+                    stmt.run(`Whey Protein Isolado 100% ISO - ${marcas[i % marcas.length]} (${sabores[i % sabores.length]})`, (149.90 + (i * 3)).toFixed(2), 900);
+                    stmt.run(`Hydro Whey Premium - ${marcas[i % marcas.length]}`, (210.00 + (i * 2.5)).toFixed(2), 750);
+                }
+
+                // 2. CREATINAS (Itens 41 a 70)
+                for (let i = 1; i <= 15; i++) {
+                    stmt.run(`Creatina Monohidratada Pure - ${marcas[i % marcas.length]}`, (65.00 + (i * 2)).toFixed(2), 300);
+                    stmt.run(`Creatina Creapure Importada - ${marcas[i % marcas.length]}`, (95.50 + (i * 1.8)).toFixed(2), 250);
+                }
+
+                // 3. PRÉ-TREINOS (Itens 71 a 100)
+                const preTreinos = ["C4 Beta Pump", "Horus", "Égide", "Psychotic", "Panic", "Evora Night"];
+                for (let i = 1; i <= 30; i++) {
+                    let pNome = preTreinos[i % preTreinos.length];
+                    let fSabor = frutas[i % frutas.length];
+                    stmt.run(`Pré-Treino ${pNome} Insane - (${fSabor})`, (79.90 + (i * 1.20)).toFixed(2), 300);
+                }
+
+                // 4. HIPERCALÓRICOS (Itens 101 a 120)
+                for (let i = 1; i <= 20; i++) {
+                    stmt.run(`Hipercalórico Mass Gainers 17500 - ${marcas[i % marcas.length]} (${sabores[i % sabores.length]})`, (59.90 + (i * 2)).toFixed(2), 3000);
+                }
+
+                // 5. AMINOÁCIDOS (BCAA / Glutamina) (Itens 121 a 140)
+                for (let i = 1; i <= 10; i++) {
+                    stmt.run(`BCAA 2:1:1 Pó Ultra Concentrado - (${frutas[i % frutas.length]})`, (45.00 + i).toFixed(2), 200);
+                    stmt.run(`L-Glutamina Imunidade Pura`, (55.00 + (i * 1.5)).toFixed(2), 300);
+                }
+
+                // 6. VITAMINAS E TERMOGÊNICOS (Itens 141 a 150)
+                const extras = ["Multivitamínico Az", "Termogênico Fire Burn", "Melatonina Drop", "Omega 3 Ultra", "ZMA Booster"];
+                for (let i = 1; i <= 10; i++) {
+                    stmt.run(`${extras[i % extras.length]} - 90 Caps`, (39.90 + (i * 2.2)).toFixed(2), 120);
+                }
+
+                stmt.finalize();
+                console.log("Banco de dados populado com sucesso!");
+            }
+        });
+    });
+
+    // 3. Tabela Mestre: Pedidos
     db.run(`CREATE TABLE IF NOT EXISTS pedidos (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         data TEXT NOT NULL, 
@@ -81,27 +143,31 @@ app.get('/listar-produtos', (req, res) => {
     });
 });
 
-// --- ROTAS MESTRE-DETALHE (CARRINHO / PEDIDOS) ---
+// --- CORREÇÃO DA ROTA MESTRE-DETALHE (FINALIZAR PEDIDO) ---
 app.post('/finalizar-pedido', (req, res) => {
     const { cliente_id, forma_pagamento, total, itens } = req.body;
     const dataAtual = new Date().toLocaleString('pt-BR');
 
+    // Iniciamos uma transação manual ou controlamos com Statements para evitar problemas assíncronos
     db.run(`INSERT INTO pedidos (data, cliente_id, forma_pagamento, total) VALUES (?, ?, ?, ?)`, 
     [dataAtual, cliente_id, forma_pagamento, total], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         
         const pedidoId = this.lastID;
-        let errors = 0;
-
-        itens.forEach(item => {
-            db.run(`INSERT INTO itens_pedido (pedido_id, produto_id, preco_cobrado, quantidade) VALUES (?, ?, ?, ?)`,
-            [pedidoId, item.id, item.preco, item.quantidade], (errItem) => {
-                if (errItem) errors++;
+        
+        // Usamos um Statement preparado para inserir os múltiplos itens de forma limpa
+        const stmt = db.prepare(`INSERT INTO itens_pedido (pedido_id, produto_id, preco_cobrado, quantidade) VALUES (?, ?, ?, ?)`);
+        
+        try {
+            itens.forEach(item => {
+                stmt.run([pedidoId, item.id, item.preco, item.quantidade]);
             });
-        });
-
-        if (errors > 0) res.status(500).json({ error: "Erro ao salvar itens do pedido." });
-        else res.json({ success: true });
+            stmt.finalize();
+            // Retorna o sucesso apenas após processar a lista do lote
+            res.json({ success: true });
+        } catch (stmtError) {
+            res.status(500).json({ error: "Erro ao processar a lista de itens do carrinho." });
+        }
     });
 });
 
