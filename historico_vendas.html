@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="estilo.css">
+    <title>Alpha Supps - Histórico de Caixa</title>
+</head>
+<body>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="clientes.html">Clientes</a>
+        <a href="produtos.html">Produtos</a>
+        <a href="vendas.html">Montar Carrinho</a>
+        <a href="historico_vendas.html">Histórico de Vendas</a>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <h2>Pedidos Realizados (Mestre)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID Pedido</th>
+                        <th>Data / Hora</th>
+                        <th>Cliente</th>
+                        <th>Pagamento</th>
+                        <th>Total</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-pedidos-mestre"></tbody>
+            </table>
+        </div>
+
+        <div class="card" id="card-detalhes" style="display:none;">
+            <h2>Itens do Pedido #<span id="num-pedido"></span> (Detalhe)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Suplemento</th>
+                        <th>Tamanho</th>
+                        <th>Qtd</th>
+                        <th>Preço Pago</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-produtos-detalhe"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            fetch('/listar-pedidos')
+                .then(res => res.json())
+                .then(pedidos => {
+                    const t = document.getElementById('lista-pedidos-mestre');
+                    pedidos.forEach(p => {
+                        t.innerHTML += `
+                            <tr>
+                                <td>#00${p.id}</td>
+                                <td>${p.data}</td>
+                                <td>${p.nome_cliente}</td>
+                                <td>${p.forma_pagamento}</td>
+                                <td style="color:var(--primary-neon)">R$ ${p.total.toFixed(2)}</td>
+                                <td><button onclick="verDetalhes(${p.id})">🔍 Ver Itens</button></td>
+                            </tr>`;
+                    });
+                });
+        };
+
+        function verDetalhes(idPedido) {
+            fetch(`/detalhes-pedido/${idPedido}`)
+                .then(res => res.json())
+                .then(itens => {
+                    document.getElementById('card-detalhes').style.display = 'block';
+                    document.getElementById('num-pedido').innerText = idPedido;
+                    
+                    const corpo = document.getElementById('lista-produtos-detalhe');
+                    corpo.innerHTML = "";
+                    
+                    itens.forEach(i => {
+                        corpo.innerHTML += `
+                            <tr>
+                                <td><strong>${i.descricao}</strong></td>
+                                <td>${i.peso_gramas}g</td>
+                                <td>${i.quantidade}x</td>
+                                <td>R$ ${i.preco_cobrado.toFixed(2)}</td>
+                            </tr>`;
+                    });
+                });
+        }
+    </script>
+</body>
+</html>
