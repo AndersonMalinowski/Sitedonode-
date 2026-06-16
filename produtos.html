@@ -31,6 +31,9 @@
                 
                 <label for="peso_gramas">Peso da Embalagem (Gramas):</label>
                 <input type="number" id="peso_gramas" name="peso_gramas" placeholder="Ex: 900" required>
+
+                <label for="estoque">Estoque Inicial:</label>
+                <input type="number" id="estoque" name="estoque" value="100" min="0" required>
                 
                 <button type="submit">💪 Cadastrar no Sistema</button>
             </form>
@@ -44,6 +47,7 @@
                         <th>Descrição</th>
                         <th>Tamanho (g)</th>
                         <th>Preço</th>
+                        <th>Qtd em Estoque</th>
                     </tr>
                 </thead>
                 <tbody id="lista-produtos"></tbody>
@@ -62,6 +66,7 @@
                             <td><strong>${p.descricao}</strong></td>
                             <td>${p.peso_gramas}g</td>
                             <td style="color:var(--primary-neon)">R$ ${p.preco.toFixed(2)}</td>
+                            <td><span class="dashboard-badge" style="background: rgba(221,255,0,0.1); color: var(--primary-neon); font-size: 0.9rem;">${p.estoque} un</span></td>
                         </tr>`;
                 });
             })
