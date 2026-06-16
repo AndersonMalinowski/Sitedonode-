@@ -2,12 +2,13 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="estilo.css">
-    <title>Alpha Supps - Home</title>
+    <title>Alpha Supps - Dashboard Interno</title>
 </head>
 <body>
     <nav>
-        <a href="index.html">Home</a>
+        <a href="index.html" class="active">Home</a>
         <a href="clientes.html">Clientes</a>
         <a href="produtos.html">Produtos</a>
         <a href="vendas.html">Montar Carrinho</a>
@@ -15,39 +16,81 @@
     </nav>
 
     <header class="banner">
-        <h1>ALPHA SUPPS</h1>
-        <p>Suplementação de Alta Performance e Tecnologia Nutricional</p>
+        <h1>ALPHA <span>SUPPS</span></h1>
+        <p>Sistema Integrado de Gestão Comercial e Alta Performance Operacional</p>
     </header>
 
     <div class="container">
-        <div class="card">
-            <h2>Bem-vindo ao Sistema Interno da Loja</h2>
-            <p>Gerencie o catálogo de produtos maromba, registre novos clientes e efetue vendas estruturadas em modelo mestre-detalhe conectadas ao banco SQLite.</p>
+        
+        <h2>Painel Geral de Hoje</h2>
+        <div class="grid-home" style="margin-bottom: 2rem;">
+            <div class="stats-box">
+                <div>
+                    <h3 style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Status do Servidor</h3>
+                    <span class="dashboard-badge" style="background: rgba(39, 247, 71, 0.1); color: #27f747;">ONLINE (SQLite)</span>
+                </div>
+                <div class="stats-number" style="color: #27f747; font-size: 1.2rem;">● 3000</div>
+            </div>
+            <div class="stats-box">
+                <div>
+                    <h3 style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Metas de Vendas</h3>
+                    <small style="color: var(--text-muted);">Evolução diária da equipe</small>
+                </div>
+                <div class="stats-number">84%</div>
+            </div>
+            <div class="stats-box">
+                <div>
+                    <h3 style="margin: 0; font-size: 0.9rem; color: var(--text-muted);">Catálogo Ativo</h3>
+                    <small style="color: var(--text-muted);">Itens populados no banco</small>
+                </div>
+                <div class="stats-number">150</div>
+            </div>
         </div>
 
-        <div class="card">
-            <h3>Nódulos do Sistema</h3>
-            <table>
-                <tbody>
-                    <tr>
-                        <td>👤 <strong>Clientes</strong></td>
-                        <td>Cadastro e listagem de compradores frequentes da loja.</td>
-                    </tr>
-                    <tr>
-                        <td>💊 <strong>Produtos</strong></td>
-                        <td>Gerenciamento do catálogo de suplementos, definição de valores e tamanhos (g).</td>
-                    </tr>
-                    <tr>
-                        <td>🛒 <strong>Vendas</strong></td>
-                        <td>Abertura de caixa, seleção de múltiplos itens e salvamento dinâmico.</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="grid-home">
+            <div class="card" style="grid-column: span 2;">
+                <h2>Avisos e Notas de Atualização</h2>
+                <p style="color: var(--text-muted); line-height: 1.6;">
+                    Bem-vindo à versão 2.0 do ERP corporativo <strong>Alpha Supps</strong>. Este ambiente foi desenhado para facilitar o fluxo de caixa rápido e o controle estruturado em modelo mestre-detalhe dos pedidos realizados no balcão.
+                </p>
+                
+                <h3 style="margin-top: 2rem; font-size: 1rem; color: var(--accent-blue);">💡 Recomendações de Uso:</h3>
+                <ul style="color: var(--text-muted); line-height: 1.8; padding-left: 20px;">
+                    <li>Certifique-se de que o cliente já possui o <strong>CPF cadastrado</strong> antes de iniciar o processo de fechamento do carrinho.</li>
+                    <li>O catálogo conta com mais de 150 variações automatizadas divididas entre Whey Protein, Creatinas Creapure, Pré-treinos e Termogênicos prontas para faturamento.</li>
+                    <li>Sempre verifique o fechamento do valor total antes de clicar em <em>"Finalizar e Confirmar Compra"</em>.</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h2>Nódulos de Acesso</h2>
+                <table>
+                    <tbody>
+                        <tr>
+                            <td>👤 <strong>Clientes</strong></td>
+                            <td><span class="dashboard-badge">Registrar</span></td>
+                        </tr>
+                        <tr>
+                            <td>💊 <strong>Produtos</strong></td>
+                            <td><span class="dashboard-badge">Estoque</span></td>
+                        </tr>
+                        <tr>
+                            <td>🛒 <strong>Vendas</strong></td>
+                            <td><span class="dashboard-badge" style="background: rgba(221,255,0,0.1); color: var(--primary-neon);">Frente Caixa</span></td>
+                        </tr>
+                        <tr>
+                            <td>📊 <strong>Histórico</strong></td>
+                            <td><span class="dashboard-badge">Auditoria</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
+
     </div>
 
     <footer class="rodape">
-        <p>&copy; 2026 Alpha Supps - Distribuidora de Suplementos Ltda.</p>
+        <p>&copy; 2026 Alpha Supps - Distribuidora de Suplementos Ltda. Todos os direitos reservados.</p>
     </footer>
 </body>
 </html>
