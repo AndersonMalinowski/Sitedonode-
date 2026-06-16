@@ -78,7 +78,9 @@
             fetch('/listar-produtos').then(res => res.json()).then(data => {
                 DB_produtos = data;
                 const sel = document.getElementById('selProduto');
-                data.forEach(p => sel.innerHTML += `<option value="${p.id}">${p.descricao} (${p.peso_gramas}g) - R$ ${p.preco.toFixed(2)}</option>`);
+                data.forEach(p => {
+                    sel.innerHTML += `<option value="${p.id}">${p.descricao} (${p.peso_gramas}g) - R$ ${p.preco.toFixed(2)} [Estoque: ${p.estoque}]</option>`;
+                });
             });
         };
 
@@ -89,7 +91,15 @@
 
             if(!produtoObj) return;
 
+            // Validação de segurança do estoque
             const itemExistente = carrinho.find(c => c.id === prodId);
+            const qtdTotalNoCarrinho = (itemExistente ? itemExistente.quantidade : 0) + qtd;
+
+            if (qtdTotalNoCarrinho > produtoObj.estoque) {
+                alert(`Estoque insuficiente! Você tentou colocar ${qtdTotalNoCarrinho} unidades no carrinho, mas existem apenas ${produtoObj.estoque} unidades disponíveis.`);
+                return;
+            }
+
             if(itemExistente) {
                 itemExistente.quantidade += qtd;
             } else {
@@ -104,14 +114,14 @@
         }
 
         function atualizarInterfaceCarrinho() {
-            const corpo = document.getElementById('carrinho-itens');
-            corpo.innerHTML = "";
+            const cuerpo = document.getElementById('carrinho-itens');
+            cuerpo.innerHTML = "";
             totalVenda = 0;
 
             carrinho.forEach(item => {
                 const subtotal = item.preco * item.quantidade;
                 totalVenda += subtotal;
-                corpo.innerHTML += `
+                cuerpo.innerHTML += `
                     <tr>
                         <td>${item.descricao}</td>
                         <td>${item.quantidade}</td>
@@ -147,7 +157,7 @@
             .then(res => res.json())
             .then(res => {
                 if(res.success) {
-                    alert("Venda realizada com sucesso!");
+                    alert("Venda realizada com sucesso e estoque atualizado!");
                     window.location.href = "historico_vendas.html";
                 }
             });
