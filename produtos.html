@@ -16,13 +16,15 @@
 
     <header class="banner">
         <h1>Catálogo de Suplementos</h1>
-        <p>Cadastre Whey Protein, Creatinas, Hipercalóricos e mais</p>
+        <p>Gerencie, edite ou remova produtos e acompanhe os níveis de estoque</p>
     </header>
 
     <div class="container">
         <div class="card">
-            <h2>Novo Suplemento</h2>
-            <form action="/salvar-produto" method="POST">
+            <h2 id="titulo-form">Novo Suplemento</h2>
+            <form id="form-produto" action="/salvar-produto" method="POST">
+                <input type="hidden" id="produto-id">
+                
                 <label for="descricao">Nome do Suplemento:</label>
                 <input type="text" id="descricao" name="descricao" placeholder="Ex: Whey Isolado 100% Pure" required>
                 
@@ -32,22 +34,24 @@
                 <label for="peso_gramas">Peso da Embalagem (Gramas):</label>
                 <input type="number" id="peso_gramas" name="peso_gramas" placeholder="Ex: 900" required>
 
-                <label for="estoque">Estoque Inicial:</label>
+                <label for="estoque">Estoque Atual:</label>
                 <input type="number" id="estoque" name="estoque" value="100" min="0" required>
                 
-                <button type="submit">💪 Cadastrar no Sistema</button>
+                <button type="submit" id="btn-submit">💪 Cadastrar no Sistema</button>
+                <button type="button" id="btn-cancelar" style="background:#333; color:white; display:none; margin-top:0.5rem;" onclick="cancelarEdicao()">Cancelar Edição</button>
             </form>
         </div>
 
         <div class="card">
-            <h2>Estoque Atual</h2>
+            <h2>Estoque e Catálogo Geral</h2>
             <table>
                 <thead>
                     <tr>
                         <th>Descrição</th>
-                        <th>Tamanho (g)</th>
+                        <th>Tamanho</th>
                         <th>Preço</th>
-                        <th>Qtd em Estoque</th>
+                        <th>Qtd Estoque</th>
+                        <th style="width: 150px; text-align: center;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="lista-produtos"></tbody>
@@ -56,21 +60,98 @@
     </div>
 
     <script>
-        fetch('/listar-produtos')
-            .then(res => res.json())
-            .then(produtos => {
-                const tabela = document.getElementById('lista-produtos');
-                produtos.forEach(p => {
-                    tabela.innerHTML += `
-                        <tr>
-                            <td><strong>${p.descricao}</strong></td>
-                            <td>${p.peso_gramas}g</td>
-                            <td style="color:var(--primary-neon)">R$ ${p.preco.toFixed(2)}</td>
-                            <td><span class="dashboard-badge" style="background: rgba(221,255,0,0.1); color: var(--primary-neon); font-size: 0.9rem;">${p.estoque} un</span></td>
-                        </tr>`;
+        let produtosLista = [];
+
+        function carregarProdutos() {
+            fetch('/listar-produtos')
+                .then(res => res.json())
+                .then(produtos => {
+                    produtosLista = produtos;
+                    const tabela = document.getElementById('lista-produtos');
+                    tabela.innerHTML = "";
+                    produtos.forEach(p => {
+                        tabela.innerHTML += `
+                            <tr>
+                                <td><strong>${p.descricao}</strong></td>
+                                <td>${p.peso_gramas}g</td>
+                                <td style="color:var(--primary-neon)">R$ ${p.preco.toFixed(2)}</td>
+                                <td><span class="dashboard-badge" style="background: rgba(221,255,0,0.1); color: var(--primary-neon); font-size: 0.9rem;">${p.estoque} un</span></td>
+                                <td style="text-align: center;">
+                                    <button onclick="prepararEdicao(${p.id})" style="width:auto; padding: 6px 12px; margin:0 4px; font-size:0.8rem; background:#23232a; color:white;">✏️</button>
+                                    <button onclick="excluirProduto(${p.id})" style="width:auto; padding: 6px 12px; margin:0 4px; font-size:0.8rem; background:var(--accent-red); color:white;">🗑️</button>
+                                </td>
+                            </tr>`;
+                    });
                 });
-            })
-            .catch(err => console.error(err));
+        }
+
+        document.getElementById('form-produto').addEventListener('submit', function(e) {
+            const id = document.getElementById('produto-id').value;
+            if(id) {
+                e.preventDefault();
+                
+                const pacote = {
+                    descricao: document.getElementById('descricao').value,
+                    preco: parseFloat(document.getElementById('preco').value),
+                    peso_gramas: parseInt(document.getElementById('peso_gramas').value),
+                    estoque: parseInt(document.getElementById('estoque').value)
+                };
+
+                fetch(`/editar-produto/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(pacote)
+                })
+                .then(res => res.json())
+                .then(res => {
+                    if(res.success) {
+                        alert("Suplemento atualizado com sucesso!");
+                        cancelarEdicao();
+                        carregarProdutos();
+                    }
+                });
+            }
+        });
+
+        function prepararEdicao(id) {
+            const produto = produtosLista.find(p => p.id === id);
+            if(!produto) return;
+
+            document.getElementById('produto-id').value = produto.id;
+            document.getElementById('descricao').value = produto.descricao;
+            document.getElementById('preco').value = produto.preco;
+            document.getElementById('peso_gramas').value = produto.peso_gramas;
+            document.getElementById('estoque').value = produto.estoque;
+
+            document.getElementById('titulo-form').innerText = "Editar Suplemento";
+            document.getElementById('btn-submit').innerText = "💾 Atualizar Produto";
+            document.getElementById('btn-cancelar').style.display = "block";
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function cancelarEdicao() {
+            document.getElementById('produto-id').value = "";
+            document.getElementById('form-produto').reset();
+            document.getElementById('estoque').value = "100";
+            document.getElementById('titulo-form').innerText = "Novo Suplemento";
+            document.getElementById('btn-submit').innerText = "💪 Cadastrar no Sistema";
+            document.getElementById('btn-cancelar').style.display = "none";
+        }
+
+        function excluirProduto(id) {
+            if(confirm("Tem certeza que deseja remover este produto do catálogo?")) {
+                fetch(`/excluir-produto/${id}`, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(res => {
+                        if(res.success) {
+                            alert("Produto removido com sucesso.");
+                            carregarProdutos();
+                        }
+                    });
+            }
+        }
+
+        window.onload = carregarProdutos;
     </script>
 </body>
 </html>
