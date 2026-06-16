@@ -18,7 +18,7 @@ db.serialize(() => {
         telefone TEXT NOT NULL
     )`);
 
-    // 2. Tabela de Produtos (Adicionado o campo ESTOQUE)
+    // 2. Tabela de Produtos
     db.run(`CREATE TABLE IF NOT EXISTS produtos (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         descricao TEXT NOT NULL, 
@@ -75,7 +75,7 @@ db.serialize(() => {
         });
     });
 
-    // 3. Tabela Mestre: Pedidos
+    // 3. Tabela de Pedidos
     db.run(`CREATE TABLE IF NOT EXISTS pedidos (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         data TEXT NOT NULL, 
@@ -85,7 +85,7 @@ db.serialize(() => {
         FOREIGN KEY (cliente_id) REFERENCES clientes(id)
     )`);
 
-    // 4. Tabela Detalhe: Itens do Pedido
+    // 4. Tabela de Itens do Pedido
     db.run(`CREATE TABLE IF NOT EXISTS itens_pedido (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         pedido_id INTEGER, 
@@ -113,10 +113,27 @@ app.get('/listar-clientes', (req, res) => {
     });
 });
 
+app.put('/editar-cliente/:id', (req, res) => {
+    const { id } = req.params;
+    const { nome, cpf, telefone } = req.body;
+    db.run(`UPDATE clientes SET nome = ?, cpf = ?, telefone = ? WHERE id = ?`, [nome, cpf, telefone, id], function(err) {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        res.json({ success: true });
+    });
+});
+
+app.delete('/excluir-cliente/:id', (req, res) => {
+    const { id } = req.params;
+    db.run(`DELETE FROM clientes WHERE id = ?`, [id], function(err) {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        res.json({ success: true });
+    });
+});
+
 // --- ROTAS DE PRODUTOS ---
 app.post('/salvar-produto', (req, res) => {
     const { descricao, preco, peso_gramas, estoque } = req.body;
-    const qtdEstoque = estoque ? parseInt(estoque) : 100; // Padrão 100 se não informado
+    const qtdEstoque = estoque ? parseInt(estoque) : 100;
     db.run(`INSERT INTO produtos (descricao, preco, peso_gramas, estoque) VALUES (?, ?, ?, ?)`, [descricao, preco, peso_gramas, qtdEstoque], function(err) {
         if (err) return res.status(500).send("Erro ao cadastrar produto.");
         res.redirect('/produtos.html');
@@ -130,7 +147,24 @@ app.get('/listar-produtos', (req, res) => {
     });
 });
 
-// --- ATUALIZADO: FINALIZAR PEDIDO COM SUBTRAÇÃO DE ESTOQUE ---
+app.put('/editar-produto/:id', (req, res) => {
+    const { id } = req.params;
+    const { descricao, preco, peso_gramas, estoque } = req.body;
+    db.run(`UPDATE produtos SET descricao = ?, preco = ?, peso_gramas = ?, estoque = ? WHERE id = ?`, [descricao, preco, peso_gramas, estoque, id], function(err) {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        res.json({ success: true });
+    });
+});
+
+app.delete('/excluir-produto/:id', (req, res) => {
+    const { id } = req.params;
+    db.run(`DELETE FROM produtos WHERE id = ?`, [id], function(err) {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        res.json({ success: true });
+    });
+});
+
+// --- ROTAS DE VENDAS ---
 app.post('/finalizar-pedido', (req, res) => {
     const { cliente_id, forma_pagamento, total, itens } = req.body;
     const dataAtual = new Date().toLocaleString('pt-BR');
@@ -140,8 +174,6 @@ app.post('/finalizar-pedido', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         
         const pedidoId = this.lastID;
-        
-        // Statements para inserir item e atualizar estoque do produto
         const stmtItem = db.prepare(`INSERT INTO itens_pedido (pedido_id, produto_id, preco_cobrado, quantidade) VALUES (?, ?, ?, ?)`);
         const stmtEstoque = db.prepare(`UPDATE produtos SET estoque = estoque - ? WHERE id = ?`);
         
@@ -184,4 +216,4 @@ app.get('/detalhes-pedido/:id', (req, res) => {
     });
 });
 
-app.listen(3000, () => console.log("Loja Maromba rodando na porta 3000!"));
+app.listen(3000, () => console.log("Servidor Alpha Supps rodando na porta 3000!"));
