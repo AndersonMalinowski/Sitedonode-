@@ -7,7 +7,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static('.'));
 
-// Banco de dados adaptado para a loja de suplementos
 const db = new sqlite3.Database('./lojasuplementos.db');
 
 db.serialize(() => {
@@ -19,24 +18,23 @@ db.serialize(() => {
         telefone TEXT NOT NULL
     )`);
 
-    // 2. Tabela de Produtos
+    // 2. Tabela de Produtos (Adicionado o campo ESTOQUE)
     db.run(`CREATE TABLE IF NOT EXISTS produtos (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         descricao TEXT NOT NULL, 
         preco REAL NOT NULL, 
-        peso_gramas INTEGER NOT NULL
+        peso_gramas INTEGER NOT NULL,
+        estoque INTEGER NOT NULL DEFAULT 100
     )`, () => {
-        // Callback para popular a tabela com 150 produtos caso ela esteja vazia
         db.get(`SELECT COUNT(*) as total FROM produtos`, [], (err, row) => {
             if (!err && row.total === 0) {
-                console.log("Populando catálogo de suplementos (150 itens)...");
-                const stmt = db.prepare(`INSERT INTO produtos (descricao, preco, peso_gramas) VALUES (?, ?, ?)`);
+                console.log("Populando catálogo de suplementos com 100 unidades cada...");
+                const stmt = db.prepare(`INSERT INTO produtos (descricao, preco, peso_gramas, estoque) VALUES (?, ?, ?, 100)`);
                 
                 const marcas = ["Max Titanium", "Growth Supplements", "IntegralMedica", "Probiotica", "Optimun Nutrition", "Darkness", "Black Skull"];
                 const sabores = ["Baunilha", "Chocolate", "Morango", "Cookies", "Banana", "Sem Sabor"];
                 const frutas = ["Frutas Vermelhas", "Limão", "Melancia", "Uva", "Maçã Verde"];
 
-                // 1. WHEY PROTEIN (Itens 1 a 40)
                 let count = 1;
                 for (let m of marcas) {
                     for (let s of sabores) {
@@ -46,43 +44,31 @@ db.serialize(() => {
                         }
                     }
                 }
-                // Isolados e Hidrolisados
                 for (let i = 1; i <= 15; i++) {
                     stmt.run(`Whey Protein Isolado 100% ISO - ${marcas[i % marcas.length]} (${sabores[i % sabores.length]})`, (149.90 + (i * 3)).toFixed(2), 900);
                     stmt.run(`Hydro Whey Premium - ${marcas[i % marcas.length]}`, (210.00 + (i * 2.5)).toFixed(2), 750);
                 }
-
-                // 2. CREATINAS (Itens 41 a 70)
                 for (let i = 1; i <= 15; i++) {
                     stmt.run(`Creatina Monohidratada Pure - ${marcas[i % marcas.length]}`, (65.00 + (i * 2)).toFixed(2), 300);
                     stmt.run(`Creatina Creapure Importada - ${marcas[i % marcas.length]}`, (95.50 + (i * 1.8)).toFixed(2), 250);
                 }
-
-                // 3. PRÉ-TREINOS (Itens 71 a 100)
                 const preTreinos = ["C4 Beta Pump", "Horus", "Égide", "Psychotic", "Panic", "Evora Night"];
                 for (let i = 1; i <= 30; i++) {
                     let pNome = preTreinos[i % preTreinos.length];
                     let fSabor = frutas[i % frutas.length];
                     stmt.run(`Pré-Treino ${pNome} Insane - (${fSabor})`, (79.90 + (i * 1.20)).toFixed(2), 300);
                 }
-
-                // 4. HIPERCALÓRICOS (Itens 101 a 120)
                 for (let i = 1; i <= 20; i++) {
                     stmt.run(`Hipercalórico Mass Gainers 17500 - ${marcas[i % marcas.length]} (${sabores[i % sabores.length]})`, (59.90 + (i * 2)).toFixed(2), 3000);
                 }
-
-                // 5. AMINOÁCIDOS (BCAA / Glutamina) (Itens 121 a 140)
                 for (let i = 1; i <= 10; i++) {
                     stmt.run(`BCAA 2:1:1 Pó Ultra Concentrado - (${frutas[i % frutas.length]})`, (45.00 + i).toFixed(2), 200);
                     stmt.run(`L-Glutamina Imunidade Pura`, (55.00 + (i * 1.5)).toFixed(2), 300);
                 }
-
-                // 6. VITAMINAS E TERMOGÊNICOS (Itens 141 a 150)
                 const extras = ["Multivitamínico Az", "Termogênico Fire Burn", "Melatonina Drop", "Omega 3 Ultra", "ZMA Booster"];
                 for (let i = 1; i <= 10; i++) {
                     stmt.run(`${extras[i % extras.length]} - 90 Caps`, (39.90 + (i * 2.2)).toFixed(2), 120);
                 }
-
                 stmt.finalize();
                 console.log("Banco de dados populado com sucesso!");
             }
@@ -127,10 +113,11 @@ app.get('/listar-clientes', (req, res) => {
     });
 });
 
-// --- ROTAS DE PRODUTOS (SUPLEMENTOS) ---
+// --- ROTAS DE PRODUTOS ---
 app.post('/salvar-produto', (req, res) => {
-    const { descricao, preco, peso_gramas } = req.body;
-    db.run(`INSERT INTO produtos (descricao, preco, peso_gramas) VALUES (?, ?, ?)`, [descricao, preco, peso_gramas], function(err) {
+    const { descricao, preco, peso_gramas, estoque } = req.body;
+    const qtdEstoque = estoque ? parseInt(estoque) : 100; // Padrão 100 se não informado
+    db.run(`INSERT INTO produtos (descricao, preco, peso_gramas, estoque) VALUES (?, ?, ?, ?)`, [descricao, preco, peso_gramas, qtdEstoque], function(err) {
         if (err) return res.status(500).send("Erro ao cadastrar produto.");
         res.redirect('/produtos.html');
     });
@@ -143,30 +130,31 @@ app.get('/listar-produtos', (req, res) => {
     });
 });
 
-// --- CORREÇÃO DA ROTA MESTRE-DETALHE (FINALIZAR PEDIDO) ---
+// --- ATUALIZADO: FINALIZAR PEDIDO COM SUBTRAÇÃO DE ESTOQUE ---
 app.post('/finalizar-pedido', (req, res) => {
     const { cliente_id, forma_pagamento, total, itens } = req.body;
     const dataAtual = new Date().toLocaleString('pt-BR');
 
-    // Iniciamos uma transação manual ou controlamos com Statements para evitar problemas assíncronos
     db.run(`INSERT INTO pedidos (data, cliente_id, forma_pagamento, total) VALUES (?, ?, ?, ?)`, 
     [dataAtual, cliente_id, forma_pagamento, total], function(err) {
         if (err) return res.status(500).json({ error: err.message });
         
         const pedidoId = this.lastID;
         
-        // Usamos um Statement preparado para inserir os múltiplos itens de forma limpa
-        const stmt = db.prepare(`INSERT INTO itens_pedido (pedido_id, produto_id, preco_cobrado, quantidade) VALUES (?, ?, ?, ?)`);
+        // Statements para inserir item e atualizar estoque do produto
+        const stmtItem = db.prepare(`INSERT INTO itens_pedido (pedido_id, produto_id, preco_cobrado, quantidade) VALUES (?, ?, ?, ?)`);
+        const stmtEstoque = db.prepare(`UPDATE produtos SET estoque = estoque - ? WHERE id = ?`);
         
         try {
             itens.forEach(item => {
-                stmt.run([pedidoId, item.id, item.preco, item.quantidade]);
+                stmtItem.run([pedidoId, item.id, item.preco, item.quantidade]);
+                stmtEstoque.run([item.quantidade, item.id]);
             });
-            stmt.finalize();
-            // Retorna o sucesso apenas após processar a lista do lote
+            stmtItem.finalize();
+            stmtEstoque.finalize();
             res.json({ success: true });
         } catch (stmtError) {
-            res.status(500).json({ error: "Erro ao processar a lista de itens do carrinho." });
+            res.status(500).json({ error: "Erro ao processar itens ou atualizar estoque." });
         }
     });
 });
