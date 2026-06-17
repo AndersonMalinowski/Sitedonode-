@@ -45,7 +45,7 @@
                         <th style="width: 150px; text-align: center;">Ações</th>
                     </tr>
                 </thead>
-                <tbody id=\"lista-clientes\"></tbody>
+                <tbody id="lista-clientes"></tbody>
             </table>
         </div>
     </div>
@@ -72,15 +72,13 @@
                                 </td>
                             </tr>`;
                     });
-                });
+                }).catch(err => console.error("Erro ao listar clientes:", err));
         }
 
-        // Intercepta o envio do formulário para decidir se cria ou edita via AJAX
         document.getElementById('form-cliente').addEventListener('submit', function(e) {
             const id = document.getElementById('cliente-id').value;
             if(id) {
-                e.preventDefault(); // Impede o redirecionamento padrão do form estrutural
-                
+                e.preventDefault();
                 const pacote = {
                     nome: document.getElementById('nome').value,
                     cpf: document.getElementById('cpf').value,
@@ -106,16 +104,13 @@
         function prepararEdicao(id) {
             const cliente = clientesLista.find(c => c.id === id);
             if(!cliente) return;
-
             document.getElementById('cliente-id').value = cliente.id;
             document.getElementById('nome').value = cliente.nome;
             document.getElementById('cpf').value = cliente.cpf;
             document.getElementById('telefone').value = cliente.telefone;
-
             document.getElementById('titulo-form').innerText = "Editar Cadastro de Cliente";
             document.getElementById('btn-submit').innerText = "💾 Atualizar Dados";
             document.getElementById('btn-cancelar').style.display = "block";
-            window.scrollTo({top: 0, behavior: 'smooth'});
         }
 
         function cancelarEdicao() {
@@ -127,15 +122,10 @@
         }
 
         function excluirCliente(id) {
-            if(confirm("Tem certeza que deseja remover permanentemente este cliente do sistema?")) {
+            if(confirm("Deseja remover este cliente?")) {
                 fetch(`/excluir-cliente/${id}`, { method: 'DELETE' })
                     .then(res => res.json())
-                    .then(res => {
-                        if(res.success) {
-                            alert("Cliente excluído.");
-                            carregarClientes();
-                        }
-                    });
+                    .then(res => { if(res.success) carregarClientes(); });
             }
         }
 
