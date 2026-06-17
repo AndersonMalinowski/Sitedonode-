@@ -52,30 +52,13 @@ db.serialize(() => {
                     stmt.run(`Creatina Monohidratada Pure - ${marcas[i % marcas.length]}`, (65.00 + (i * 2)).toFixed(2), 300);
                     stmt.run(`Creatina Creapure Importada - ${marcas[i % marcas.length]}`, (95.50 + (i * 1.8)).toFixed(2), 250);
                 }
-                const preTreinos = ["C4 Beta Pump", "Horus", "Égide", "Psychotic", "Panic", "Evora Night"];
-                for (let i = 1; i <= 30; i++) {
-                    let pNome = preTreinos[i % preTreinos.length];
-                    let fSabor = frutas[i % frutas.length];
-                    stmt.run(`Pré-Treino ${pNome} Insane - (${fSabor})`, (79.90 + (i * 1.20)).toFixed(2), 300);
-                }
-                for (let i = 1; i <= 20; i++) {
-                    stmt.run(`Hipercalórico Mass Gainers 17500 - ${marcas[i % marcas.length]} (${sabores[i % sabores.length]})`, (59.90 + (i * 2)).toFixed(2), 3000);
-                }
-                for (let i = 1; i <= 10; i++) {
-                    stmt.run(`BCAA 2:1:1 Pó Ultra Concentrado - (${frutas[i % frutas.length]})`, (45.00 + i).toFixed(2), 200);
-                    stmt.run(`L-Glutamina Imunidade Pura`, (55.00 + (i * 1.5)).toFixed(2), 300);
-                }
-                const extras = ["Multivitamínico Az", "Termogênico Fire Burn", "Melatonina Drop", "Omega 3 Ultra", "ZMA Booster"];
-                for (let i = 1; i <= 10; i++) {
-                    stmt.run(`${extras[i % extras.length]} - 90 Caps`, (39.90 + (i * 2.2)).toFixed(2), 120);
-                }
                 stmt.finalize();
                 console.log("Banco de dados populado com sucesso!");
             }
         });
     });
 
-    // 3. Tabela de Pedidos
+    // 3. Tabela Mestre: Pedidos
     db.run(`CREATE TABLE IF NOT EXISTS pedidos (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         data TEXT NOT NULL, 
@@ -85,7 +68,7 @@ db.serialize(() => {
         FOREIGN KEY (cliente_id) REFERENCES clientes(id)
     )`);
 
-    // 4. Tabela de Itens do Pedido
+    // 4. Tabela Detalhe: Itens do Pedido
     db.run(`CREATE TABLE IF NOT EXISTS itens_pedido (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         pedido_id INTEGER, 
@@ -164,14 +147,19 @@ app.delete('/excluir-produto/:id', (req, res) => {
     });
 });
 
-// --- ROTAS DE VENDAS ---
+// --- ROTA CORRIGIDA: FINALIZAR PEDIDO (HISTÓRICO) ---
 app.post('/finalizar-pedido', (req, res) => {
     const { cliente_id, forma_pagamento, total, itens } = req.body;
     const dataAtual = new Date().toLocaleString('pt-BR');
 
+    // Validação básica backend
+    if (!cliente_id || !itens || itens.length === 0) {
+        return res.status(400).json({ success: false, error: "Dados incompletos." });
+    }
+
     db.run(`INSERT INTO pedidos (data, cliente_id, forma_pagamento, total) VALUES (?, ?, ?, ?)`, 
     [dataAtual, cliente_id, forma_pagamento, total], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+        if (err) return res.status(500).json({ success: false, error: err.message });
         
         const pedidoId = this.lastID;
         const stmtItem = db.prepare(`INSERT INTO itens_pedido (pedido_id, produto_id, preco_cobrado, quantidade) VALUES (?, ?, ?, ?)`);
@@ -186,7 +174,7 @@ app.post('/finalizar-pedido', (req, res) => {
             stmtEstoque.finalize();
             res.json({ success: true });
         } catch (stmtError) {
-            res.status(500).json({ error: "Erro ao processar itens ou atualizar estoque." });
+            res.status(500).json({ success: false, error: "Erro ao processar itens." });
         }
     });
 });
@@ -195,7 +183,7 @@ app.get('/listar-pedidos', (req, res) => {
     const sql = `
         SELECT p.id, p.data, p.forma_pagamento, p.total, c.nome as nome_cliente 
         FROM pedidos p 
-        INNER JOIN clientes c ON p.cliente_id = c.id 
+        LEFT JOIN clientes c ON p.cliente_id = c.id 
         ORDER BY p.id DESC`;
     db.all(sql, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -216,4 +204,4 @@ app.get('/detalhes-pedido/:id', (req, res) => {
     });
 });
 
-app.listen(3000, () => console.log("Servidor Alpha Supps rodando na porta 3000!"));
+app.listen(3000, () => console.log("Servidor Alpha Supps ativo na porta 3000!"));
