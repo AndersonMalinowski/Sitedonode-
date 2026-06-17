@@ -53,19 +53,21 @@
             fetch('/listar-pedidos')
                 .then(res => res.json())
                 .then(pedidos => {
-                    const t = document.getElementById('lista-pedidos-mestre');
+                    const tabela = document.getElementById('lista-pedidos-mestre');
+                    tabela.innerHTML = "";
                     pedidos.forEach(p => {
-                        t.innerHTML += `
+                        const nomeCliente = p.nome_cliente ? p.nome_cliente : "Cliente Removido";
+                        tabela.innerHTML += `
                             <tr>
                                 <td>#00${p.id}</td>
                                 <td>${p.data}</td>
-                                <td>${p.nome_cliente}</td>
+                                <td>${nomeCliente}</td>
                                 <td>${p.forma_pagamento}</td>
                                 <td style="color:var(--primary-neon)">R$ ${p.total.toFixed(2)}</td>
-                                <td><button onclick="verDetalhes(${p.id})">🔍 Ver Itens</button></td>
+                                <td><button onclick="verDetalhes(${p.id})" style="margin:0; padding:6px 12px; width:auto; font-size:0.85rem;">🔍 Ver Itens</button></td>
                             </tr>`;
                     });
-                });
+                }).catch(err => console.error("Erro ao carregar histórico:", err));
         };
 
         function verDetalhes(idPedido) {
@@ -87,6 +89,7 @@
                                 <td>R$ ${i.preco_cobrado.toFixed(2)}</td>
                             </tr>`;
                     });
+                    window.scrollTo({ top: document.getElementById('card-detalhes').offsetTop, behavior: 'smooth' });
                 });
         }
     </script>
