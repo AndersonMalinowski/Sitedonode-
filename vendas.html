@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="estilo.css">
-    <title>Alpha Supps - Frente de Caixa</title>
+    <title>Alpha Supps - Caixa</title>
 </head>
 <body>
     <nav>
@@ -12,154 +12,92 @@
         <a href="produtos.html">Produtos</a>
         <a href="vendas.html">Montar Carrinho</a>
         <a href="historico_vendas.html">Histórico de Vendas</a>
+        <a href="/logout" style="margin-left: auto; background: var(--accent-red); color: white; padding: 6px 15px; border-radius: 4px; font-weight: bold;">🚪 Sair</a>
     </nav>
 
     <div class="container">
         <div class="card">
-            <h2>Nova Venda (Mestre)</h2>
-            
+            <h2>Nova Venda</h2>
             <label for="selCliente">Selecione o Cliente:</label>
-            <select id="selCliente">
-                <option value="">Escolha...</option>
-            </select>
-
+            <select id="selCliente"><option value="">Escolha...</option></select>
             <label for="formaPagamento">Forma de Pagamento:</label>
             <select id="formaPagamento">
                 <option value="Pix">Pix</option>
-                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                <option value="Cartão">Cartão</option>
                 <option value="Dinheiro">Dinheiro</option>
             </select>
         </div>
 
         <div class="card">
-            <h2>Adicionar Suplementos ao Carrinho (Detalhe)</h2>
-            <label for="selProduto">Produto:</label>
+            <h2>Adicionar Itens</h2>
+            <label for="selProduto">Suplemento:</label>
             <select id="selProduto"></select>
-
             <label for="qtdProduto">Quantidade:</label>
             <input type="number" id="qtdProduto" value="1" min="1">
-
-            <button type="button" onclick="adicionarItem()" style="background:#333; color:white;">➕ Inserir no Carrinho</button>
+            <button onclick="adicionarAoCarrinho()">🛒 Adicionar Item</button>
         </div>
 
         <div class="card">
-            <h2>Itens do Pedido Atual</h2>
+            <h2>Carrinho de Compras</h2>
             <table>
-                <thead>
-                    <tr>
-                        <th>Suplemento</th>
-                        <th>Qtd</th>
-                        <th>Preço Unitário</th>
-                        <th>Subtotal</th>
-                    </tr>
-                </thead>
-                <tbody id="carrinho-itens"></tbody>
+                <thead><tr><th>Produto</th><th>Qtd</th><th>Preço</th><th>Subtotal</th></tr></thead>
+                <tbody id="corpo-carrinho"></tbody>
             </table>
-
-            <div style="text-align: right; margin-top: 15px;">
-                <h2 id="txtTotal" style="color:var(--primary-neon)">Total Geral: R$ 0.00</h2>
-            </div>
-
-            <button type="button" onclick="fecharPedido()">🔥 Finalizar e Confirmar Compra</button>
+            <h3 id="txtTotal" style="margin-top:1.5rem; color:var(--primary-neon);">Total Geral: R$ 0.00</h3>
+            <button onclick="fecharPedido()" style="background:var(--primary-neon); color:black;">🚀 Finalizar Venda</button>
         </div>
     </div>
 
     <script>
-        let DB_produtos = [];
         let carrinho = [];
         let totalVenda = 0;
+        let dbProdutos = [];
 
         window.onload = function() {
             fetch('/listar-clientes').then(res => res.json()).then(data => {
-                const sel = document.getElementById('selCliente');
-                data.forEach(c => sel.innerHTML += `<option value="${c.id}">${c.nome}</option>`);
+                const s = document.getElementById('selCliente');
+                data.forEach(c => s.innerHTML += `<option value="${c.id}">${c.nome}</option>`);
             });
-
             fetch('/listar-produtos').then(res => res.json()).then(data => {
-                DB_produtos = data;
-                const sel = document.getElementById('selProduto');
-                data.forEach(p => {
-                    sel.innerHTML += `<option value="${p.id}">${p.descricao} (${p.peso_gramas}g) - R$ ${p.preco.toFixed(2)} [Estoque: ${p.estoque}]</option>`;
-                });
+                dbProdutos = data;
+                const s = document.getElementById('selProduto');
+                data.forEach(p => s.innerHTML += `<option value="${p.id}">${p.descricao} (${p.peso_gramas}g)</option>`);
             });
         };
 
-        function adicionarItem() {
-            const prodId = parseInt(document.getElementById('selProduto').value);
+        function adicionarAoCarrinho() {
+            const pId = parseInt(document.getElementById('selProduto').value);
             const qtd = parseInt(document.getElementById('qtdProduto').value);
-            const produtoObj = DB_produtos.find(p => p.id === prodId);
+            const produtoObj = dbProdutos.find(p => p.id === pId);
 
             if(!produtoObj) return;
 
-            // Validação de segurança do estoque
-            const itemExistente = carrinho.find(c => c.id === prodId);
-            const qtdTotalNoCarrinho = (itemExistente ? itemExistente.quantidade : 0) + qtd;
-
-            if (qtdTotalNoCarrinho > produtoObj.estoque) {
-                alert(`Estoque insuficiente! Você tentou colocar ${qtdTotalNoCarrinho} unidades no carrinho, mas existem apenas ${produtoObj.estoque} unidades disponíveis.`);
-                return;
-            }
-
-            if(itemExistente) {
-                itemExistente.quantidade += qtd;
-            } else {
-                carrinho.push({
-                    id: produtoObj.id,
-                    descricao: produtoObj.descricao,
-                    preco: produtoObj.preco,
-                    quantidade: qtd
-                });
-            }
-            atualizarInterfaceCarrinho();
+            carrinho.push({ id: produtoObj.id, descricao: produtoObj.descricao, quantidade: qtd, preco: produtoObj.preco });
+            atualizarGrade();
         }
 
-        function atualizarInterfaceCarrinho() {
-            const cuerpo = document.getElementById('carrinho-itens');
-            cuerpo.innerHTML = "";
+        function atualizarGrade() {
+            const corpo = document.getElementById('corpo-carrinho');
+            corpo.innerHTML = "";
             totalVenda = 0;
-
             carrinho.forEach(item => {
-                const subtotal = item.preco * item.quantidade;
-                totalVenda += subtotal;
-                cuerpo.innerHTML += `
-                    <tr>
-                        <td>${item.descricao}</td>
-                        <td>${item.quantidade}</td>
-                        <td>R$ ${item.preco.toFixed(2)}</td>
-                        <td>R$ ${subtotal.toFixed(2)}</td>
-                    </tr>`;
+                let sub = item.preco * item.whitespace_fix ? 1 : item.quantidade;
+                totalVenda += sub;
+                corpo.innerHTML += `<tr><td>${item.descricao}</td><td>${item.quantidade}</td><td>R$ ${item.preco.toFixed(2)}</td><td>R$ ${sub.toFixed(2)}</td></tr>`;
             });
-
             document.getElementById('txtTotal').innerText = `Total Geral: R$ ${totalVenda.toFixed(2)}`;
         }
 
         function fecharPedido() {
-            const clienteId = document.getElementById('selCliente').value;
-            const formaPag = document.getElementById('formaPagamento').value;
-
-            if(!clienteId || carrinho.length === 0) {
-                alert("Preencha o cliente e adicione produtos ao carrinho.");
-                return;
-            }
-
-            const pacote = {
-                cliente_id: clienteId,
-                forma_pagamento: formaPag,
-                total: totalVenda,
-                itens: carrinho
-            };
+            const cId = document.getElementById('selCliente').value;
+            if(!cId || carrinho.length === 0) return alert("Preencha o cliente e adicione itens!");
 
             fetch('/finalizar-pedido', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(pacote)
-            })
-            .then(res => res.json())
-            .then(res => {
-                if(res.success) {
-                    alert("Venda realizada com sucesso e estoque atualizado!");
-                    window.location.href = "historico_vendas.html";
-                }
+                body: JSON.stringify({ cliente_id: cId, forma_pagamento: document.getElementById('formaPagamento').value, total: totalVenda, itens: carrinho })
+            }).then(res => res.json()).then(res => {
+                if(res.success) { alert("Venda Concluída!"); window.location.href = "historico_vendas.html"; }
             });
         }
     </script>
