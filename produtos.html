@@ -12,24 +12,28 @@
         <a href="produtos.html">Produtos</a>
         <a href="vendas.html">Montar Carrinho</a>
         <a href="historico_vendas.html">Histórico de Vendas</a>
-        <a href="/logout" style="margin-left: auto; background: var(--accent-red); color: white; padding: 6px 15px; border-radius: 4px; font-weight: bold;">🚪 Sair</a>
+        <a href="/logout" style="margin-left: auto; font-weight: bold;">🚪 Sair</a>
     </nav>
+
+    <header class="banner">
+        <h1>Catálogo de Suplementos</h1>
+        <p>Cadastre Whey Protein, Creatinas, Hipercalóricos e mais</p>
+    </header>
 
     <div class="container">
         <div class="card">
-            <h2 id="titulo-form">Novo Suplemento</h2>
-            <form id="form-produto" action="/salvar-produto" method="POST">
-                <input type="hidden" id="produto-id">
+            <h2>Novo Suplemento</h2>
+            <form action="/salvar-produto" method="POST">
                 <label for="descricao">Nome do Suplemento:</label>
-                <input type="text" id="descricao" name="descricao" required>
-                <label for="preco">Preço (R$):</label>
-                <input type="number" step="0.01" id="preco" name="preco" required>
-                <label for="peso_gramas">Peso (Gramas):</label>
-                <input type="number" id="peso_gramas" name="peso_gramas" required>
-                <label for="estoque">Estoque Inicial:</label>
-                <input type="number" id="estoque" name="estoque" value="100" required>
-                <button type="submit" id="btn-submit">💪 Cadastrar Suplemento</button>
-                <button type="button" id="btn-cancelar" style="background:#333; color:white; display:none; margin-top:0.5rem;" onclick="cancelarEdicao()">Cancelar Edição</button>
+                <input type="text" id="descricao" name="descricao" placeholder="Ex: Whey Isolado 100% Pure" required>
+                
+                <label for="preco">Preço de Venda (R$):</label>
+                <input type="number" step="0.01" id="preco" name="preco" placeholder="0.00" required>
+                
+                <label for="peso_gramas">Peso da Embalagem (Gramas):</label>
+                <input type="number" id="peso_gramas" name="peso_gramas" placeholder="Ex: 900" required>
+                
+                <button type="submit">💪 Cadastrar no Sistema</button>
             </form>
         </div>
 
@@ -37,7 +41,11 @@
             <h2>Estoque Atual</h2>
             <table>
                 <thead>
-                    <tr><th>Descrição</th><th>Tamanho</th><th>Preço</th><th>Estoque</th><th style="width:120px; text-align:center;">Ações</th></tr>
+                    <tr>
+                        <th>Descrição</th>
+                        <th>Tamanho (g)</th>
+                        <th>Preço</th>
+                    </tr>
                 </thead>
                 <tbody id="lista-produtos"></tbody>
             </table>
@@ -45,70 +53,20 @@
     </div>
 
     <script>
-        let produtosLista = [];
-        function carregarProdutos() {
-            fetch('/listar-produtos').then(res => res.json()).then(data => {
-                produtosLista = data;
+        fetch('/listar-produtos')
+            .then(res => res.json())
+            .then(produtos => {
                 const tabela = document.getElementById('lista-produtos');
-                tabela.innerHTML = "";
-                data.forEach(p => {
-                    tabela.innerHTML += `<tr>
-                        <td><strong>${p.descricao}</strong></td><td>${p.peso_gramas}g</td><td style="color:var(--primary-neon)">R$ ${p.preco.toFixed(2)}</td><td>${p.estoque} un</td>
-                        <td style="text-align:center;">
-                            <button onclick="prepararEdicao(${p.id})" style="width:auto; padding:5px 10px; margin:0 2px; background:#23232a; color:white;">✏️</button>
-                            <button onclick="excluirProduto(${p.id})" style="width:auto; padding:5px 10px; margin:0 2px; background:var(--accent-red); color:white;">🗑️</button>
-                        </td>
-                    </tr>`;
+                produtos.forEach(p => {
+                    tabela.innerHTML += `
+                        <tr>
+                            <td><strong>${p.descricao}</strong></td>
+                            <td>${p.peso_gramas}g</td>
+                            <td style="color:var(--primary-neon)">R$ ${p.preco.toFixed(2)}</td>
+                        </tr>`;
                 });
-            });
-        }
-
-        document.getElementById('form-produto').addEventListener('submit', function(e) {
-            const id = document.getElementById('produto-id').value;
-            if(id) {
-                e.preventDefault();
-                fetch(`/editar-produto/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        descricao: document.getElementById('descricao').value,
-                        preco: parseFloat(document.getElementById('preco').value),
-                        peso_gramas: parseInt(document.getElementById('peso_gramas').value),
-                        estoque: parseInt(document.getElementById('estoque').value)
-                    })
-                }).then(res => res.json()).then(res => {
-                    if(res.success) { alert("Produto atualizado!"); cancelarEdicao(); carregarProdutos(); }
-                });
-            }
-        });
-
-        function prepararEdicao(id) {
-            const p = produtosLista.find(item => item.id === id);
-            if(!p) return;
-            document.getElementById('produto-id').value = p.id;
-            document.getElementById('descricao').value = p.descricao;
-            document.getElementById('preco').value = p.preco;
-            document.getElementById('peso_gramas').value = p.peso_gramas;
-            document.getElementById('estoque').value = p.estoque;
-            document.getElementById('titulo-form').innerText = "Editar Suplemento";
-            document.getElementById('btn-submit').innerText = "💾 Atualizar";
-            document.getElementById('btn-cancelar').style.display = "block";
-        }
-
-        function cancelarEdicao() {
-            document.getElementById('produto-id').value = "";
-            document.getElementById('form-produto').reset();
-            document.getElementById('titulo-form').innerText = "Novo Suplemento";
-            document.getElementById('btn-submit').innerText = "💪 Cadastrar Suplemento";
-            document.getElementById('btn-cancelar').style.display = "none";
-        }
-
-        function excluirProduto(id) {
-            if(confirm("Deseja remover este suplemento?")) {
-                fetch(`/excluir-produto/${id}`, { method: 'DELETE' }).then(res => res.json()).then(res => { if(res.success) carregarProdutos(); });
-            }
-        }
-        window.onload = carregarProdutos;
+            })
+            .catch(err => console.error(err));
     </script>
 </body>
 </html>
