@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="estilo.css">
-    <title>Alpha Supps - Login</title>
+    <title>Alpha Supps - Autenticação</title>
     <style>
         body { justify-content: center; align-items: center; min-height: 100vh; }
         .login-container { max-width: 400px; width: 100%; margin: 0 auto; padding: 1rem; }
@@ -12,14 +12,18 @@
 <body>
     <div class="login-container">
         <div class="card" style="text-align: center;">
-            <h1 style="color: var(--primary-neon); font-size: 2rem; margin-bottom: 0.5rem;">ALPHA <span style="color:white;">SUPPS</span></h1>
+            <h1 style="color: var(--primary-neon); margin-bottom: 0.5rem;">ALPHA SUPPS</h1>
             <p style="color: var(--text-muted); margin-bottom: 2rem;">Controle de Acesso</p>
+            
             <form action="/login" method="POST">
-                <label for="senha" style="text-align: left;">Senha do Sistema:</label>
-                <input type="password" id="senha" name="senha" placeholder="••••" required style="text-align: center; font-size: 1.5rem; letter-spacing: 5px;">
+                <label for="senha" style="text-align: left;">Digite a Senha:</label>
+                <input type="password" id="senha" name="senha" placeholder="••••" required style="text-align: center; font-size: 1.5rem;">
                 <button type="submit">🔓 Entrar</button>
             </form>
-            <div id="erro" style="color: var(--accent-red); margin-top: 15px; font-size: 0.9rem; display: none;">Senha incorreta!</div>
+            
+            <div id="erro" style="color: var(--accent-red); margin-top: 15px; font-size: 0.9rem; display: none;">
+                Senha incorreta!
+            </div>
         </div>
     </div>
     <script>
