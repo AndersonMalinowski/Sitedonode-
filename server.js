@@ -1,13 +1,13 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const bodyParser = require('body-parser');
-const session = require('express-session'); // Adicionado para controle de acesso
+const session = require('express-session');
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Configuração da Sessão (Expira em 2 horas de inatividade)
+// Sessão de autenticação (Expira em 2 horas)
 app.use(session({
     secret: 'chave-secreta-alpha-supps-2026',
     resave: false,
@@ -15,9 +15,7 @@ app.use(session({
     cookie: { maxAge: 2 * 60 * 60 * 1000 }
 }));
 
-const db = new sqlite3.Database('./lojasuplementos.db');
-
-// --- MIDDLEWARE DE PROTEÇÃO (SÓ ACESSA COM SENHA) ---
+// Proteção das páginas do sistema
 function verificarAutenticacao(req, res, next) {
     if (req.path === '/login.html' || req.path === '/login' || req.path === '/estilo.css') {
         return next();
@@ -31,6 +29,9 @@ function verificarAutenticacao(req, res, next) {
 app.use(verificarAutenticacao);
 app.use(express.static('.'));
 
+// Banco de dados adaptado para a loja de suplementos
+const db = new sqlite3.Database('./lojasuplementos.db');
+
 db.serialize(() => {
     // 1. Tabela de Clientes
     db.run(`CREATE TABLE IF NOT EXISTS clientes (
@@ -40,13 +41,14 @@ db.serialize(() => {
         telefone TEXT NOT NULL
     )`);
 
-    // 2. Tabela de Produtos (Original)
+    // 2. Tabela de Produtos
     db.run(`CREATE TABLE IF NOT EXISTS produtos (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         descricao TEXT NOT NULL, 
         preco REAL NOT NULL, 
         peso_gramas INTEGER NOT NULL
     )`, () => {
+        // Popula a tabela com 150 produtos caso esteja vazia
         db.get(`SELECT COUNT(*) as total FROM produtos`, [], (err, row) => {
             if (!err && row.total === 0) {
                 console.log("Populando catálogo de suplementos (150 itens)...");
@@ -56,6 +58,7 @@ db.serialize(() => {
                 const sabores = ["Baunilha", "Chocolate", "Morango", "Cookies", "Banana", "Sem Sabor"];
                 const frutas = ["Frutas Vermelhas", "Limão", "Melancia", "Uva", "Maçã Verde"];
 
+                // WHEY PROTEIN
                 let count = 1;
                 for (let m of marcas) {
                     for (let s of sabores) {
@@ -69,27 +72,45 @@ db.serialize(() => {
                     stmt.run(`Whey Protein Isolado 100% ISO - ${marcas[i % marcas.length]} (${sabores[i % sabores.length]})`, (149.90 + (i * 3)).toFixed(2), 900);
                     stmt.run(`Hydro Whey Premium - ${marcas[i % marcas.length]}`, (210.00 + (i * 2.5)).toFixed(2), 750);
                 }
+
+                // CREATINAS
                 for (let i = 1; i <= 15; i++) {
                     stmt.run(`Creatina Monohidratada Pure - ${marcas[i % marcas.length]}`, (65.00 + (i * 2)).toFixed(2), 300);
                     stmt.run(`Creatina Creapure Importada - ${marcas[i % marcas.length]}`, (95.50 + (i * 1.8)).toFixed(2), 250);
                 }
-                for (let i = 1; i <= 15; i++) {
-                    stmt.run(`BCAA Pump Max 4:1:1 - ${marcas[i % marcas.length]} (${frutas[i % frutas.length]})`, (45.00 + (i * 1.2)).toFixed(2), 200);
-                    stmt.run(`Glutamina L-Glutamine Pure - ${marcas[i % marcas.length]}`, (59.90 + (i * 1.1)).toFixed(2), 300);
+
+                // PRÉ-TREINOS
+                const preTreinos = ["C4 Beta Pump", "Horus", "Égide", "Psychotic", "Panic", "Evora Night"];
+                for (let i = 1; i <= 30; i++) {
+                    let pNome = preTreinos[i % preTreinos.length];
+                    let fSabor = frutas[i % frutas.length];
+                    stmt.run(`Pré-Treino ${pNome} Insane - (${fSabor})`, (79.90 + (i * 1.20)).toFixed(2), 300);
                 }
-                for (let i = 1; i <= 15; i++) {
-                    stmt.run(`Hipercalórico Mass Gainer - ${marcas[i % marcas.length]} (${sabores[i % sabores.length]})`, (49.90 + (i * 2)).toFixed(2), 3000);
+
+                // HIPERCALÓRICOS
+                for (let i = 1; i <= 20; i++) {
+                    stmt.run(`Hipercalórico Mass Gainers 17500 - ${marcas[i % marcas.length]} (${sabores[i % sabores.length]})`, (59.90 + (i * 2)).toFixed(2), 3000);
                 }
+
+                // AMINOÁCIDOS
                 for (let i = 1; i <= 10; i++) {
-                    stmt.run(`Pré-Treino C4 Beta Pump - ${marcas[i % marcas.length]} (${frutas[i % frutas.length]})`, (85.00 + (i * 2.2)).toFixed(2), 300);
+                    stmt.run(`BCAA 2:1:1 Pó Ultra Concentrado - (${frutas[i % frutas.length]})`, (45.00 + i).toFixed(2), 200);
+                    stmt.run(`L-Glutamina Imunidade Pura`, (55.00 + (i * 1.5)).toFixed(2), 300);
                 }
+
+                // VITAMINAS
+                const extras = ["Multivitamínico Az", "Termogênico Fire Burn", "Melatonina Drop", "Omega 3 Ultra", "ZMA Booster"];
+                for (let i = 1; i <= 10; i++) {
+                    stmt.run(`${extras[i % extras.length]} - 90 Caps`, (39.90 + (i * 2.2)).toFixed(2), 120);
+                }
+
                 stmt.finalize();
                 console.log("Banco de dados populado com sucesso!");
             }
         });
     });
 
-    // 3. Tabela Mestre: Pedidos
+    // 3. Tabela Pedidos
     db.run(`CREATE TABLE IF NOT EXISTS pedidos (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         data TEXT NOT NULL, 
@@ -99,7 +120,7 @@ db.serialize(() => {
         FOREIGN KEY (cliente_id) REFERENCES clientes(id)
     )`);
 
-    // 4. Tabela Detalhe: Itens do Pedido
+    // 4. Tabela Itens do Pedido
     db.run(`CREATE TABLE IF NOT EXISTS itens_pedido (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
         pedido_id INTEGER, 
@@ -111,7 +132,7 @@ db.serialize(() => {
     )`);
 });
 
-// --- ROTA DE LOGIN ---
+// --- AUTENTICAÇÃO ---
 app.post('/login', (req, res) => {
     const { senha } = req.body;
     if (senha === '1234') {
@@ -122,13 +143,12 @@ app.post('/login', (req, res) => {
     }
 });
 
-// --- ROTA DE LOGOUT ---
 app.get('/logout', (req, res) => {
     req.session.destroy();
     res.redirect('/login.html');
 });
 
-// --- ROTAS DE CLIENTES ---
+// --- CLIENTES ---
 app.post('/salvar-cliente', (req, res) => {
     const { nome, cpf, telefone } = req.body;
     db.run(`INSERT INTO clientes (nome, cpf, telefone) VALUES (?, ?, ?)`, [nome, cpf, telefone], function(err) {
@@ -144,7 +164,7 @@ app.get('/listar-clientes', (req, res) => {
     });
 });
 
-// --- ROTAS DE PRODUTOS ---
+// --- PRODUTOS ---
 app.post('/salvar-produto', (req, res) => {
     const { descricao, preco, peso_gramas } = req.body;
     db.run(`INSERT INTO produtos (descricao, preco, peso_gramas) VALUES (?, ?, ?)`, [descricao, preco, peso_gramas], function(err) {
@@ -160,7 +180,7 @@ app.get('/listar-produtos', (req, res) => {
     });
 });
 
-// --- ROTAS DE PEDIDOS (HISTÓRICO) ---
+// --- PEDIDOS ---
 app.post('/finalizar-pedido', (req, res) => {
     const { cliente_id, forma_pagamento, total, itens } = req.body;
     const dataAtual = new Date().toLocaleString('pt-BR');
@@ -179,7 +199,7 @@ app.post('/finalizar-pedido', (req, res) => {
             stmt.finalize();
             res.json({ success: true });
         } catch (stmtError) {
-            res.status(500).json({ error: "Erro ao processar a lista de itens do carrinho." });
+            res.status(500).json({ error: "Erro ao processar os itens do carrinho." });
         }
     });
 });
@@ -188,7 +208,7 @@ app.get('/listar-pedidos', (req, res) => {
     const sql = `
         SELECT p.id, p.data, p.forma_pagamento, p.total, c.nome as nome_cliente 
         FROM pedidos p 
-        INNER JOIN clientes c ON p.cliente_id = c.id 
+        LEFT JOIN clientes c ON p.cliente_id = c.id 
         ORDER BY p.id DESC`;
     db.all(sql, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -209,4 +229,6 @@ app.get('/detalhes-pedido/:id', (req, res) => {
     });
 });
 
-app.listen(3000, () => console.log("Servidor Alpha Supps Ativo na porta 3000!"));
+// Configuração para abrir no GitHub Codespaces
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => console.log(`Loja Maromba rodando na porta ${PORT}!`));
