@@ -49,15 +49,15 @@
 
     <script>
         fetch('/listar-clientes')
-            .then(res => res.json() && res.json().catch(() => []))
+            .then(res => res.json())
             .then(data => {
                 const t = document.getElementById('lista-clientes');
-                if(data && data.forEach) {
-                    data.forEach(c => {
-                        t.innerHTML += `<tr><td><strong>${c.nome}</strong></td><td>${c.cpf}</td><td>${c.telefone}</td></tr>`;
-                    });
-                }
-            }).catch(err => console.error(err));
+                t.innerHTML = "";
+                data.forEach(c => {
+                    t.innerHTML += `<tr><td><strong>${c.nome}</strong></td><td>${c.cpf}</td><td>${c.telefone}</td></tr>`;
+                });
+            })
+            .catch(err => console.error(err));
     </script>
 </body>
 </html>
