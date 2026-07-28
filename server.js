@@ -1,44 +1,37 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const bodyParser = require('body-parser');
-const session = require('express-session'); // Importa o controle de sessões
+const session = require('express-session');
 const app = express();
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Configuração da Sessão na memória
+// Configuração da Sessão (Expira em 2 horas de inatividade)
 app.use(session({
     secret: 'chave-secreta-alpha-supps-2026',
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 2 * 60 * 60 * 1000 } // Sessão expira em 2 horas de inatividade
+    cookie: { maxAge: 2 * 60 * 60 * 1000 }
 }));
 
 const db = new sqlite3.Database('./lojasuplementos.db');
 
-// --- MIDDLEWARE DE PROTEÇÃO (O GUARDA DO SITE) ---
+// --- MIDDLEWARE DE PROTEÇÃO (SÓ PASSA COM SENHA) ---
 function verificarAutenticacao(req, res, next) {
-    // Se o usuário pedir a página de login ou os arquivos de estilo, permite o acesso
     if (req.path === '/login.html' || req.path === '/login' || req.path === '/estilo.css') {
         return next();
     }
-    
-    // Se ele estiver logado, permite continuar para a página desejada
     if (req.session && req.session.autenticado) {
         return next();
     }
-    
-    // Se não estiver logado e tentar acessar qualquer outra coisa, é barrado e mandado pro login
     res.redirect('/login.html');
 }
 
-// Aplica o guarda de segurança antes de liberar a pasta pública do site
 app.use(verificarAutenticacao);
 app.use(express.static('.'));
 
-
-// --- BANCO DE DADOS (ESTRUTURA INICIAL) ---
+// --- ESTRUTURA DO BANCO DE DADOS ---
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS clientes (
         id INTEGER PRIMARY KEY AUTOINCREMENT, 
@@ -56,7 +49,7 @@ db.serialize(() => {
     )`, () => {
         db.get(`SELECT COUNT(*) as total FROM produtos`, [], (err, row) => {
             if (!err && row.total === 0) {
-                console.log("Populando catálogo de suplementos com 100 unidades cada...");
+                console.log("Populando catálogo de suplementos com stock inicial...");
                 const stmt = db.prepare(`INSERT INTO produtos (descricao, preco, peso_gramas, estoque) VALUES (?, ?, ?, 100)`);
                 const marcas = ["Max Titanium", "Growth Supplements", "IntegralMedica", "Probiotica"];
                 for (let i = 1; i <= 10; i++) {
@@ -82,32 +75,27 @@ db.serialize(() => {
         pedido_id INTEGER, 
         produto_id INTEGER, 
         preco_cobrado REAL NOT NULL,
-        whitespace_fix INTEGER,
         quantidade INTEGER NOT NULL,
         FOREIGN KEY (pedido_id) REFERENCES pedidos(id),
         FOREIGN KEY (produto_id) REFERENCES produtos(id)
     )`);
 });
 
-
-// --- ROTA DE LOGIN (AUTENTICAÇÃO) ---
+// --- ROTAS DE AUTENTICAÇÃO ---
 app.post('/login', (req, res) => {
     const { senha } = req.body;
-    
     if (senha === '1234') {
-        req.session.autenticado = true; // Cria o registro de logado na sessão do navegador
-        res.redirect('/index.html');    // Direciona para a Home de forma segura
+        req.session.autenticado = true;
+        res.redirect('/index.html');
     } else {
-        res.redirect('/login.html?erro=1'); // Retorna ao login exibindo erro de senha inválida
+        res.redirect('/login.html?erro=1');
     }
 });
 
-// --- ROTA DE LOGOUT (SAIR) ---
 app.get('/logout', (req, res) => {
-    req.session.destroy(); // Apaga a sessão ativa
+    req.session.destroy();
     res.redirect('/login.html');
 });
-
 
 // --- ROTAS DE CLIENTES ---
 app.post('/salvar-cliente', (req, res) => {
@@ -141,7 +129,6 @@ app.delete('/excluir-cliente/:id', (req, res) => {
         res.json({ success: true });
     });
 });
-
 
 // --- ROTAS DE PRODUTOS ---
 app.post('/salvar-produto', (req, res) => {
@@ -177,11 +164,14 @@ app.delete('/excluir-produto/:id', (req, res) => {
     });
 });
 
-
-// --- ROTAS DE PEDIDOS ---
+// --- ROTAS DE VENDAS (HISTÓRICO PERMANENTE) ---
 app.post('/finalizar-pedido', (req, res) => {
     const { cliente_id, forma_pagamento, total, itens } = req.body;
     const dataAtual = new Date().toLocaleString('pt-BR');
+
+    if (!cliente_id || !itens || itens.length === 0) {
+        return res.status(400).json({ success: false, error: "Dados incompletos." });
+    }
 
     db.run(`INSERT INTO pedidos (data, cliente_id, forma_pagamento, total) VALUES (?, ?, ?, ?)`, 
     [dataAtual, cliente_id, forma_pagamento, total], function(err) {
@@ -214,10 +204,10 @@ app.get('/listar-pedidos', (req, res) => {
 });
 
 app.get('/detalhes-pedido/:id', (req, res) => {
-    db.all(`SELECT i.preco_cobrado, i.whitespace_fix, i.quantidade, pr.descricao, pr.peso_gramas FROM itens_pedido i INNER JOIN produtos pr ON i.produto_id = pr.id WHERE i.pedido_id = ?`, [req.params.id], (err, rows) => {
+    db.all(`SELECT i.preco_cobrado, i.quantidade, pr.descricao, pr.peso_gramas FROM itens_pedido i INNER JOIN produtos pr ON i.produto_id = pr.id WHERE i.pedido_id = ?`, [req.params.id], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
 });
 
-app.listen(3000, () => console.log("Servidor Alpha Supps Protegido Rodando na Porta 3000!"));
+app.listen(3000, () => console.log("Servidor Alpha Supps rodando na porta 3000!"));
