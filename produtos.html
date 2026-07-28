@@ -57,6 +57,7 @@
             .then(res => res.json())
             .then(produtos => {
                 const tabela = document.getElementById('lista-produtos');
+                tabela.innerHTML = "";
                 produtos.forEach(p => {
                     tabela.innerHTML += `
                         <tr>
