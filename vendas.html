@@ -76,18 +76,27 @@
             atualizarGrade();
         }
 
-        function atualizarGrade() {
-            const corpo = document.getElementById('corpo-carrinho');
-            corpo.innerHTML = "";
-            totalVenda = 0;
-            carrinho.forEach(item => {
-                let sub = item.preco * item.whitespace_fix ? 1 : item.quantidade;
-                totalVenda += sub;
-                corpo.innerHTML += `<tr><td>${item.descricao}</td><td>${item.quantidade}</td><td>R$ ${item.preco.toFixed(2)}</td><td>R$ ${sub.toFixed(2)}</td></tr>`;
-            });
-            document.getElementById('txtTotal').innerText = `Total Geral: R$ ${totalVenda.toFixed(2)}`;
-        }
+     function atualizarGrade() {
+    const corpo = document.getElementById('corpo-carrinho');
+    corpo.innerHTML = "";
+    totalVenda = 0;
+    
+    carrinho.forEach((item, index) => {
+        // Cálculo correto do subtotal: Preço unitário x Quantidade
+        let sub = item.preco * item.quantidade;
+        totalVenda += sub;
 
+        corpo.innerHTML += `
+            <tr>
+                <td>${item.descricao}</td>
+                <td>${item.quantidade}</td>
+                <td>R$ ${item.preco.toFixed(2)}</td>
+                <td>R$ ${sub.toFixed(2)}</td>
+            </tr>`;
+    });
+
+    document.getElementById('txtTotal').innerText = `Total Geral: R$ ${totalVenda.toFixed(2)}`;
+}
         function fecharPedido() {
             const cId = document.getElementById('selCliente').value;
             if(!cId || carrinho.length === 0) return alert("Preencha o cliente e adicione itens!");
